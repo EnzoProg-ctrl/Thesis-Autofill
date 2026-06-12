@@ -1,0 +1,530 @@
+
+<style>
+  :root {
+    --nm-navy: #0C2D3F;
+    --nm-teal: #0A7B6C;
+    --nm-teal-light: #E0F5F2;
+    --nm-teal-mid: #14A899;
+    --nm-accent: #F4A623;
+    --nm-bg: #F2F5F7;
+    --nm-white: var(--color-background-primary);
+    --nm-border: var(--color-border-tertiary);
+    --nm-text: var(--color-text-primary);
+    --nm-muted: var(--color-text-secondary);
+    --nm-danger: #D64045;
+    --nm-danger-bg: #FDECEA;
+    --nm-success: #2D9C6E;
+    --nm-success-bg: #E5F7EF;
+    --nm-warning: #D97706;
+    --nm-warning-bg: #FEF3E2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: transparent; }
+  .screen-nav {
+    display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap;
+  }
+  .screen-btn {
+    font-size: 12px; font-weight: 500; padding: 6px 14px;
+    border-radius: var(--border-radius-md);
+    border: 0.5px solid var(--color-border-secondary);
+    background: var(--color-background-primary);
+    color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s;
+  }
+  .screen-btn.active {
+    background: var(--nm-navy); color: #fff; border-color: var(--nm-navy);
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Auth screens (split) ── */
+  .auth-wrap {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-radius: var(--border-radius-lg);
+    border: 0.5px solid var(--nm-border);
+    overflow: hidden; min-height: 480px;
+  }
+  .auth-left {
+    background: var(--nm-navy); padding: 2.5rem 2rem;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .auth-brand { display: flex; align-items: center; gap: 10px; }
+  .auth-brand-icon {
+    width: 36px; height: 36px; background: var(--nm-teal-mid);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  }
+  .auth-brand-icon i { font-size: 18px; color: #fff; }
+  .auth-brand-text { color: #fff; }
+  .auth-brand-text .brand-name { font-size: 14px; font-weight: 500; letter-spacing: 0.5px; }
+  .auth-brand-text .brand-sub { font-size: 11px; color: rgba(255,255,255,0.55); letter-spacing: 0.5px; text-transform: uppercase; }
+  .auth-hero { }
+  .auth-hero-tagline {
+    font-size: 22px; font-weight: 500; color: #fff; line-height: 1.35; margin-bottom: 10px;
+  }
+  .auth-hero-tagline span { color: var(--nm-teal-mid); }
+  .auth-hero-desc { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.65; }
+  .auth-features { display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .auth-feature {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: rgba(255,255,255,0.65);
+  }
+  .auth-feature i { font-size: 15px; color: var(--nm-teal-mid); }
+  .auth-right {
+    background: var(--nm-white); padding: 2.5rem 2rem;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .auth-title { font-size: 20px; font-weight: 500; color: var(--nm-text); margin-bottom: 4px; }
+  .auth-subtitle { font-size: 13px; color: var(--nm-muted); margin-bottom: 1.75rem; }
+  .form-group { margin-bottom: 1rem; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--nm-muted); margin-bottom: 5px; display: block; letter-spacing: 0.3px; text-transform: uppercase; }
+  .form-input-wrap { position: relative; }
+  .form-input-wrap i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--nm-muted); }
+  .form-input {
+    width: 100%; padding: 9px 11px 9px 36px;
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-secondary);
+    color: var(--nm-text); font-size: 14px;
+    font-family: var(--font-sans);
+  }
+  .btn-primary {
+    width: 100%; padding: 10px; background: var(--nm-navy);
+    color: #fff; border: none; border-radius: var(--border-radius-md);
+    font-size: 14px; font-weight: 500; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; gap: 7px; margin-top: 0.5rem;
+  }
+  .btn-primary i { font-size: 16px; }
+  .auth-footer { font-size: 13px; color: var(--nm-muted); text-align: center; margin-top: 1.25rem; }
+  .auth-footer a { color: var(--nm-teal); font-weight: 500; text-decoration: none; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── Tenant Submit Report ── */
+  .app-shell { display: grid; grid-template-columns: 200px 1fr; border-radius: var(--border-radius-lg); border: 0.5px solid var(--nm-border); overflow: hidden; min-height: 520px; }
+  .sidebar { background: var(--nm-navy); padding: 1.25rem 0; display: flex; flex-direction: column; }
+  .sidebar-brand { padding: 0 1rem 1.25rem; border-bottom: 0.5px solid rgba(255,255,255,0.1); margin-bottom: 0.75rem; }
+  .sidebar-brand .brand-name { font-size: 13px; font-weight: 500; color: #fff; }
+  .sidebar-brand .brand-sub { font-size: 10px; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.5px; }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; padding: 0 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+    border-radius: var(--border-radius-md); font-size: 13px; cursor: pointer;
+    color: rgba(255,255,255,0.55); transition: all 0.1s;
+  }
+  .nav-item i { font-size: 16px; }
+  .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active i { color: var(--nm-teal-mid); }
+  .sidebar-user { padding: 1rem; border-top: 0.5px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 9px; }
+  .sidebar-user .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--nm-teal); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #fff; flex-shrink: 0; }
+  .sidebar-user .user-info .uname { font-size: 12px; font-weight: 500; color: #fff; }
+  .sidebar-user .user-info .urole { font-size: 10px; color: rgba(255,255,255,0.45); }
+  .main-content { background: var(--nm-bg); padding: 1.5rem; overflow: auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .page-title { font-size: 17px; font-weight: 500; color: var(--nm-text); }
+  .page-sub { font-size: 13px; color: var(--nm-muted); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { width: 32px; height: 32px; border-radius: var(--border-radius-md); border: 0.5px solid var(--nm-border); background: var(--nm-white); display: flex; align-items: center; justify-content: center; color: var(--nm-muted); }
+  .icon-btn i { font-size: 16px; }
+  .notif-dot { position: relative; }
+  .notif-dot::after { content: ''; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--nm-danger); border: 1.5px solid var(--nm-white); }
+  .card { background: var(--nm-white); border-radius: var(--border-radius-lg); border: 0.5px solid var(--nm-border); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--nm-text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .card-title i { font-size: 18px; color: var(--nm-teal); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 11px; font-weight: 500; color: var(--nm-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  .field-input { padding: 8px 11px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--nm-text); font-size: 13px; font-family: var(--font-sans); width: 100%; }
+  .field-select { padding: 8px 11px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--nm-muted); font-size: 13px; font-family: var(--font-sans); width: 100%; }
+  .field-textarea { padding: 9px 11px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--nm-text); font-size: 13px; font-family: var(--font-sans); width: 100%; resize: vertical; min-height: 80px; }
+  .upload-zone { border: 0.5px dashed var(--color-border-primary); border-radius: var(--border-radius-md); padding: 1.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; background: var(--color-background-secondary); }
+  .upload-zone i { font-size: 24px; color: var(--nm-muted); }
+  .upload-zone span { font-size: 12px; color: var(--nm-muted); }
+  .upload-zone strong { font-size: 13px; color: var(--nm-text); font-weight: 500; }
+  .form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem; }
+  .btn-secondary { padding: 8px 16px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: transparent; color: var(--nm-muted); font-size: 13px; cursor: pointer; font-family: var(--font-sans); }
+  .btn-submit { padding: 8px 18px; background: var(--nm-navy); border: none; border-radius: var(--border-radius-md); color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 7px; font-family: var(--font-sans); }
+  .btn-submit i { font-size: 15px; }
+
+  /* AI badge */
+  .ai-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--nm-teal-light); color: var(--nm-teal); font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 99px; border: 0.5px solid rgba(10,123,108,0.25); }
+  .ai-badge i { font-size: 13px; }
+
+  /* Report list */
+  .report-item { background: var(--nm-white); border-radius: var(--border-radius-lg); border: 0.5px solid var(--nm-border); padding: 1rem 1.25rem; margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; }
+  .report-item:last-child { margin-bottom: 0; }
+  .report-id { font-size: 11px; font-weight: 500; color: var(--nm-muted); }
+  .report-title { font-size: 13px; font-weight: 500; color: var(--nm-text); margin: 2px 0; }
+  .report-meta { font-size: 11px; color: var(--nm-muted); }
+  .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 99px; }
+  .badge-high { background: var(--nm-danger-bg); color: var(--nm-danger); }
+  .badge-medium { background: var(--nm-warning-bg); color: var(--nm-warning); }
+  .badge-low { background: var(--nm-success-bg); color: var(--nm-success); }
+  .badge-progress { background: #EEF2FF; color: #4F46E5; }
+  .badge-pending { background: var(--nm-warning-bg); color: var(--nm-warning); }
+  .badge-done { background: var(--nm-success-bg); color: var(--nm-success); }
+  .report-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+
+  /* ── PMO Dashboard ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1rem; }
+  .stat-card { background: var(--nm-white); border-radius: var(--border-radius-lg); border: 0.5px solid var(--nm-border); padding: 1rem; }
+  .stat-label { font-size: 11px; color: var(--nm-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 500; color: var(--nm-text); }
+  .stat-delta { font-size: 11px; color: var(--nm-success); margin-top: 3px; }
+  .stat-delta.neg { color: var(--nm-danger); }
+  .stat-icon { float: right; width: 32px; height: 32px; border-radius: var(--border-radius-md); background: var(--nm-teal-light); display: flex; align-items: center; justify-content: center; }
+  .stat-icon i { font-size: 17px; color: var(--nm-teal); }
+
+  .table-wrap { background: var(--nm-white); border-radius: var(--border-radius-lg); border: 0.5px solid var(--nm-border); overflow: hidden; }
+  .table-header { padding: 0.9rem 1.25rem; border-bottom: 0.5px solid var(--nm-border); display: flex; align-items: center; justify-content: space-between; }
+  .table-title { font-size: 14px; font-weight: 500; color: var(--nm-text); }
+  .table-actions { display: flex; gap: 8px; }
+  .btn-filter { padding: 5px 12px; border: 0.5px solid var(--nm-border); border-radius: var(--border-radius-md); background: transparent; font-size: 12px; color: var(--nm-muted); cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: var(--font-sans); }
+  .btn-filter i { font-size: 13px; }
+  .table-row { padding: 0.85rem 1.25rem; border-bottom: 0.5px solid var(--nm-border); display: grid; grid-template-columns: 80px 1fr 100px 90px 90px 120px; align-items: center; gap: 10px; }
+  .table-row:last-child { border-bottom: none; }
+  .table-head { background: var(--color-background-secondary); }
+  .table-head span { font-size: 11px; font-weight: 500; color: var(--nm-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  .cell-id { font-size: 12px; font-weight: 500; color: var(--nm-muted); }
+  .cell-title { font-size: 13px; font-weight: 500; color: var(--nm-text); }
+  .cell-loc { font-size: 12px; color: var(--nm-muted); }
+  .conf-bar-wrap { display: flex; align-items: center; gap: 7px; }
+  .conf-bar { height: 5px; border-radius: 99px; background: var(--color-background-secondary); flex: 1; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 99px; background: var(--nm-teal); }
+  .conf-pct { font-size: 11px; color: var(--nm-muted); flex-shrink: 0; }
+  .btn-review { padding: 4px 11px; background: var(--nm-navy); color: #fff; border: none; border-radius: var(--border-radius-md); font-size: 11px; font-weight: 500; cursor: pointer; font-family: var(--font-sans); }
+</style>
+
+<h2 class="sr-only">Nepo Mall Report System – UI design mockup showing Login, Tenant Report, and PMO Dashboard screens</h2>
+
+<div class="screen-nav">
+  <button class="screen-btn active" onclick="showScreen('login')">Login</button>
+  <button class="screen-btn" onclick="showScreen('register')">Register</button>
+  <button class="screen-btn" onclick="showScreen('tenant')">Tenant – Submit Report</button>
+  <button class="screen-btn" onclick="showScreen('pmo')">PMO Dashboard</button>
+</div>
+
+<!-- ── SCREEN: LOGIN ── -->
+<div class="screen active" id="s-login">
+  <div class="auth-wrap">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <div class="auth-brand-icon"><i class="ti ti-clipboard-check" aria-hidden="true"></i></div>
+        <div class="auth-brand-text">
+          <div class="brand-name">Nepo Mall</div>
+          <div class="brand-sub">Report System</div>
+        </div>
+      </div>
+      <div class="auth-hero">
+        <div class="auth-hero-tagline">Report issues fast,<br>Keep Nepo Mall <span>safe.</span></div>
+        <div class="auth-hero-desc">Help us maintain a safe and comfortable environment for everyone in the mall community.</div>
+        <div class="auth-features">
+          <div class="auth-feature"><i class="ti ti-flag-2" aria-hidden="true"></i>Report issues</div>
+          <div class="auth-feature"><i class="ti ti-clock" aria-hidden="true"></i>Track status</div>
+          <div class="auth-feature"><i class="ti ti-circle-check" aria-hidden="true"></i>Get it fixed</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:rgba(255,255,255,0.3);">© 2026 Nepo Mall – PMO</div>
+    </div>
+    <div class="auth-right">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-subtitle">Sign in to your account to continue</div>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <div class="form-input-wrap">
+          <i class="ti ti-mail" aria-hidden="true"></i>
+          <input class="form-input" type="email" placeholder="you@nepomall.com" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="form-input-wrap">
+          <i class="ti ti-lock" aria-hidden="true"></i>
+          <input class="form-input" type="password" placeholder="Enter your password" />
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+        <a href="#" style="font-size:12px; color:var(--nm-teal); text-decoration:none; font-weight:500;">Forgot password?</a>
+      </div>
+      <button class="btn-primary"><i class="ti ti-login" aria-hidden="true"></i>Sign in</button>
+      <div class="auth-footer" style="margin-top:1rem;">Don't have an account? <a href="#">Sign up</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN: REGISTER ── -->
+<div class="screen" id="s-register">
+  <div class="auth-wrap">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <div class="auth-brand-icon"><i class="ti ti-clipboard-check" aria-hidden="true"></i></div>
+        <div class="auth-brand-text">
+          <div class="brand-name">Nepo Mall</div>
+          <div class="brand-sub">Report System</div>
+        </div>
+      </div>
+      <div class="auth-hero">
+        <div class="auth-hero-tagline">Join the<br><span>maintenance</span><br>community.</div>
+        <div class="auth-hero-desc" style="margin-top:10px;">Register as a tenant or staff member to start submitting and tracking facility concerns.</div>
+        <div style="margin-top:1.5rem; background:rgba(255,255,255,0.06); border-radius:var(--border-radius-md); padding:12px; border: 0.5px solid rgba(255,255,255,0.1);">
+          <div style="font-size:11px; color:rgba(255,255,255,0.45); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px;">Who can register?</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:12px; color:rgba(255,255,255,0.7); display:flex; align-items:center; gap:7px;"><i class="ti ti-building-store" style="font-size:14px; color:var(--nm-teal-mid)" aria-hidden="true"></i>Commercial tenants</div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.7); display:flex; align-items:center; gap:7px;"><i class="ti ti-tool" style="font-size:14px; color:var(--nm-teal-mid)" aria-hidden="true"></i>Maintenance staff</div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.7); display:flex; align-items:center; gap:7px;"><i class="ti ti-shield-check" style="font-size:14px; color:var(--nm-teal-mid)" aria-hidden="true"></i>PMO administrators</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:rgba(255,255,255,0.3);">© 2026 Nepo Mall – PMO</div>
+    </div>
+    <div class="auth-right">
+      <div class="auth-title">Create your account</div>
+      <div class="auth-subtitle">Fill in your details to get started</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full name</label>
+          <div class="form-input-wrap"><i class="ti ti-user" aria-hidden="true"></i><input class="form-input" placeholder="Juan dela Cruz" /></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Employee / Tenant ID</label>
+          <div class="form-input-wrap"><i class="ti ti-id-badge" aria-hidden="true"></i><input class="form-input" placeholder="NM-00123" /></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department / Store name</label>
+        <div class="form-input-wrap"><i class="ti ti-building" aria-hidden="true"></i><input class="form-input" placeholder="e.g. Unit 3B – Fashion Zone" /></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <div class="form-input-wrap"><i class="ti ti-mail" aria-hidden="true"></i><input class="form-input" type="email" placeholder="you@store.com" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="form-input-wrap"><i class="ti ti-lock" aria-hidden="true"></i><input class="form-input" type="password" placeholder="Create password" /></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm password</label>
+          <div class="form-input-wrap"><i class="ti ti-lock-check" aria-hidden="true"></i><input class="form-input" type="password" placeholder="Confirm password" /></div>
+        </div>
+      </div>
+      <button class="btn-primary" style="margin-top:0.25rem;"><i class="ti ti-user-plus" aria-hidden="true"></i>Register account</button>
+      <div class="auth-footer" style="margin-top:0.85rem;">Already have an account? <a href="#" style="color:var(--nm-teal); font-weight:500; text-decoration:none;">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN: TENANT SUBMIT ── -->
+<div class="screen" id="s-tenant">
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-name">Nepo Mall</div>
+        <div class="brand-sub">Report System</div>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item active"><i class="ti ti-plus-circle" aria-hidden="true"></i>Submit report</div>
+        <div class="nav-item"><i class="ti ti-list-details" aria-hidden="true"></i>My reports</div>
+        <div class="nav-item"><i class="ti ti-bell" aria-hidden="true"></i>Notifications</div>
+        <div class="nav-item" style="margin-top:auto;"><i class="ti ti-settings" aria-hidden="true"></i>Settings</div>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar">JR</div>
+        <div class="user-info">
+          <div class="uname">Jhanrelle</div>
+          <div class="urole">Tenant · Unit 3B</div>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Submit a report</div>
+          <div class="page-sub">Describe the facility issue in detail</div>
+        </div>
+        <div class="topbar-right">
+          <span class="ai-badge"><i class="ti ti-cpu" aria-hidden="true"></i>AI-assisted classification</span>
+          <div class="icon-btn notif-dot"><i class="ti ti-bell" aria-hidden="true"></i></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="ti ti-file-description" aria-hidden="true"></i>Issue details</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">Issue title</label>
+            <input class="field-input" placeholder="e.g., Water leak sa bathroom sink" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Location</label>
+            <input class="field-input" placeholder="e.g., Unit 3B, Ground Floor" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Category</label>
+            <select class="field-select"><option>Select category</option><option>Plumbing</option><option>Electrical</option><option>Structural</option><option>HVAC / Aircon</option><option>Safety hazard</option></select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" style="display:flex; align-items:center; gap:6px;">Priority <span class="ai-badge" style="font-size:10px; padding:2px 7px;"><i class="ti ti-wand" aria-hidden="true"></i>Auto-detected</span></label>
+            <select class="field-select"><option>AI will suggest</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+          </div>
+        </div>
+        <div class="field-group" style="margin-bottom:12px;">
+          <label class="field-label">Detailed description (Taglish is OK)</label>
+          <textarea class="field-textarea" placeholder="Ilarawan ang problema nang detalyado... e.g., 'Yung gripo sa CR namin ay tumatulo na mula kahapon, nagka-basa na yung sahig at baka sumalpak ang mga electrical outlet sa paligid.'"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Upload photos (optional)</label>
+          <div class="upload-zone">
+            <i class="ti ti-cloud-upload" aria-hidden="true"></i>
+            <strong>Click to upload or drag and drop</strong>
+            <span>PNG, JPG up to 10MB</span>
+          </div>
+        </div>
+        <div class="form-footer">
+          <button class="btn-secondary">Clear form</button>
+          <button class="btn-submit"><i class="ti ti-send" aria-hidden="true"></i>Submit report</button>
+        </div>
+      </div>
+
+      <div class="card-title" style="padding: 0 0 0.75rem;"><i class="ti ti-history" aria-hidden="true"></i>My submitted reports</div>
+      <div class="report-item">
+        <div>
+          <div class="report-id">RPT-001</div>
+          <div class="report-title">Water leak in bathroom sink</div>
+          <div class="report-meta"><i class="ti ti-map-pin" style="font-size:12px; vertical-align:-1px" aria-hidden="true"></i> Unit 3B, Bathroom &nbsp;·&nbsp; Submitted 05/02/2026</div>
+        </div>
+        <div class="report-badges">
+          <span class="badge badge-high">High</span>
+          <span class="badge badge-progress">In progress</span>
+        </div>
+      </div>
+      <div class="report-item">
+        <div>
+          <div class="report-id">RPT-002</div>
+          <div class="report-title">Flickering fluorescent light — counter area</div>
+          <div class="report-meta"><i class="ti ti-map-pin" style="font-size:12px; vertical-align:-1px" aria-hidden="true"></i> Unit 3B, Sales Floor &nbsp;·&nbsp; Submitted 04/28/2026</div>
+        </div>
+        <div class="report-badges">
+          <span class="badge badge-medium">Medium</span>
+          <span class="badge badge-pending">Pending</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN: PMO DASHBOARD ── -->
+<div class="screen" id="s-pmo">
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-name">Nepo Mall</div>
+        <div class="brand-sub">PMO Admin</div>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item active"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Dashboard</div>
+        <div class="nav-item"><i class="ti ti-inbox" aria-hidden="true"></i>All reports</div>
+        <div class="nav-item"><i class="ti ti-users" aria-hidden="true"></i>Maintenance staff</div>
+        <div class="nav-item"><i class="ti ti-chart-bar" aria-hidden="true"></i>Analytics</div>
+        <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i>Settings</div>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar" style="background:#4F46E5;">PM</div>
+        <div class="user-info">
+          <div class="uname">PMO Admin</div>
+          <div class="urole">Administrator</div>
+        </div>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Overview</div>
+          <div class="page-sub">Thursday, May 7, 2026</div>
+        </div>
+        <div class="topbar-right">
+          <span class="ai-badge"><i class="ti ti-cpu" aria-hidden="true"></i>BERT model active</span>
+          <div class="icon-btn notif-dot"><i class="ti ti-bell" aria-hidden="true"></i></div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></div>
+          <div class="stat-label">Open reports</div>
+          <div class="stat-value">24</div>
+          <div class="stat-delta neg">↑ 3 since yesterday</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#FDECEA;"><i class="ti ti-flame" style="color:var(--nm-danger)" aria-hidden="true"></i></div>
+          <div class="stat-label">Critical / High</div>
+          <div class="stat-value">5</div>
+          <div class="stat-delta neg">Needs immediate review</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i class="ti ti-tool" aria-hidden="true"></i></div>
+          <div class="stat-label">In progress</div>
+          <div class="stat-value">11</div>
+          <div class="stat-delta">↓ 2 resolved today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--nm-success-bg);"><i class="ti ti-circle-check" style="color:var(--nm-success)" aria-hidden="true"></i></div>
+          <div class="stat-label">Resolved (month)</div>
+          <div class="stat-value">87</div>
+          <div class="stat-delta">93% resolution rate</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title">Reports pending AI review</div>
+          <div class="table-actions">
+            <button class="btn-filter"><i class="ti ti-filter" aria-hidden="true"></i>Filter</button>
+            <button class="btn-filter"><i class="ti ti-sort-ascending" aria-hidden="true"></i>Sort by priority</button>
+          </div>
+        </div>
+        <div class="table-row table-head">
+          <span>ID</span><span>Issue</span><span>Category</span><span>Priority</span><span>Confidence</span><span>Action</span>
+        </div>
+        <div class="table-row">
+          <span class="cell-id">RPT-031</span>
+          <div><div class="cell-title">Exposed na wire sa escalator area</div><div class="cell-loc">Ground Floor – Main Entrance</div></div>
+          <span class="badge badge-progress" style="font-size:11px;">Electrical</span>
+          <span class="badge badge-high">Critical</span>
+          <div class="conf-bar-wrap"><div class="conf-bar"><div class="conf-fill" style="width:94%;"></div></div><span class="conf-pct">94%</span></div>
+          <button class="btn-review">Review</button>
+        </div>
+        <div class="table-row">
+          <span class="cell-id">RPT-030</span>
+          <div><div class="cell-title">Hindi gumagana ang fire exit door</div><div class="cell-loc">Level 2 – East Wing</div></div>
+          <span class="badge badge-progress" style="font-size:11px;">Safety</span>
+          <span class="badge badge-high">High</span>
+          <div class="conf-bar-wrap"><div class="conf-bar"><div class="conf-fill" style="width:88%;"></div></div><span class="conf-pct">88%</span></div>
+          <button class="btn-review">Review</button>
+        </div>
+        <div class="table-row">
+          <span class="cell-id">RPT-029</span>
+          <div><div class="cell-title">CR sink parang may leak sa ilalim</div><div class="cell-loc">Level 1 – North Restroom</div></div>
+          <span class="badge" style="background:#EEF2FF; color:#4F46E5; font-size:11px;">Plumbing</span>
+          <span class="badge badge-medium">Medium</span>
+          <div class="conf-bar-wrap"><div class="conf-bar"><div class="conf-fill" style="width:76%;"></div></div><span class="conf-pct">76%</span></div>
+          <button class="btn-review">Review</button>
+        </div>
+        <div class="table-row">
+          <span class="cell-id">RPT-028</span>
+          <div><div class="cell-title">Aircon sa food court hindi malamig</div><div class="cell-loc">Level 2 – Food Court</div></div>
+          <span class="badge" style="background:#FEF3E2; color:#D97706; font-size:11px;">HVAC</span>
+          <span class="badge badge-low">Low</span>
+          <div class="conf-bar-wrap"><div class="conf-bar"><div class="conf-fill" style="width:81%; background:#639922;"></div></div><span class="conf-pct">81%</span></div>
+          <button class="btn-review">Review</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
