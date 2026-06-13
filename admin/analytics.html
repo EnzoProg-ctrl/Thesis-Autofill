@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nepo Mall — Facility Issue Analytics Dashboard. View trends, AI accuracy, budget impact, and performance metrics.">
+  <title>Analytics — Nepo Mall Admin</title>
+  <link rel="stylesheet" href="../css/design-system.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="admin-layout">
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="admin-sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <a href="../index.html" class="logo">
+          <div class="logo-icon">N</div>
+          <div>
+            <div class="logo-text">Nepo Mall</div>
+            <div class="logo-sub">PMO Admin</div>
+          </div>
+        </a>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Main</div>
+        <a href="index.html" class="sidebar-link">
+          <span class="link-icon">📊</span> Dashboard
+        </a>
+        <a href="hitl.html" class="sidebar-link">
+          <span class="link-icon">🔍</span> HITL Review
+        </a>
+        <a href="analytics.html" class="sidebar-link active">
+          <span class="link-icon">📈</span> Analytics
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="../index.html"><span>🏠</span> Back to Portal</a>
+      </div>
+    </aside>
+
+    <!-- ===== Content ===== -->
+    <div class="admin-content">
+
+      <!-- Top Bar -->
+      <header class="admin-topbar">
+        <div style="display:flex;align-items:center;gap:var(--sp-3);">
+          <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+          <span class="topbar-title">Analytics</span>
+        </div>
+        <div class="topbar-right">
+          <div class="segmented-control" id="timeRange">
+            <button class="segmented-btn" data-range="1">This Month</button>
+            <button class="segmented-btn" data-range="3">This Quarter</button>
+            <button class="segmented-btn active" data-range="6">6 Months</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="exportPdf">📄 Export PDF</button>
+          <button class="btn btn-secondary btn-sm" id="exportCsv">📊 Export CSV</button>
+        </div>
+      </header>
+
+      <!-- Page Body -->
+      <main class="admin-page">
+
+        <!-- KPI Summary -->
+        <div class="kpi-grid" id="kpiGrid">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Issues</div>
+            <div class="kpi-value" id="kpiTotalIssues">—</div>
+            <div class="kpi-trend" id="kpiTotalTrend"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Most Common Category</div>
+            <div class="kpi-value" id="kpiTopCategory">—</div>
+            <div class="kpi-trend" id="kpiTopCategoryCount"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Avg Resolution Time</div>
+            <div class="kpi-value" id="kpiAvgResolution">—</div>
+            <div class="kpi-trend" id="kpiResolutionNote"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">AI Accuracy</div>
+            <div class="kpi-value" id="kpiAiAccuracy">—</div>
+            <div class="kpi-trend" id="kpiAccuracyTrend"></div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="analytics-grid">
+
+          <!-- 1. Issues by Category — Doughnut -->
+          <div class="analytics-card">
+            <h4>Issues by Category</h4>
+            <div class="chart-container">
+              <canvas id="chartCategoryDoughnut"></canvas>
+            </div>
+          </div>
+
+          <!-- 2. Monthly Trend — Line -->
+          <div class="analytics-card">
+            <h4>Monthly Trend</h4>
+            <div class="chart-container">
+              <canvas id="chartMonthlyTrend"></canvas>
+            </div>
+          </div>
+
+          <!-- 3. Priority Distribution — Stacked Bar -->
+          <div class="analytics-card">
+            <h4>Priority Distribution</h4>
+            <div class="chart-container">
+              <canvas id="chartPriorityDist"></canvas>
+            </div>
+          </div>
+
+          <!-- 4. Resolution Time by Category — Horizontal Bar -->
+          <div class="analytics-card">
+            <h4>Resolution Time by Category</h4>
+            <div class="chart-container">
+              <canvas id="chartResolutionTime"></canvas>
+            </div>
+          </div>
+
+          <!-- 5. AI Accuracy Over Time — Line -->
+          <div class="analytics-card">
+            <h4>AI Accuracy Over Time</h4>
+            <div class="chart-container">
+              <canvas id="chartAiAccuracy"></canvas>
+            </div>
+          </div>
+
+          <!-- 6. Budget Impact by Category — Horizontal Bar (full-width) -->
+          <div class="analytics-card full-width">
+            <h4>Budget Impact by Category</h4>
+            <div class="chart-container">
+              <canvas id="chartBudget"></canvas>
+            </div>
+          </div>
+
+          <!-- 7. Top Recurring Issues — Horizontal Bar -->
+          <div class="analytics-card">
+            <h4>Top Recurring Issues</h4>
+            <div class="chart-container">
+              <canvas id="chartRecurring"></canvas>
+            </div>
+          </div>
+
+          <!-- 8. Issue Status Distribution — Doughnut -->
+          <div class="analytics-card">
+            <h4>Issue Status Distribution</h4>
+            <div class="chart-container">
+              <canvas id="chartStatusDist"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="../js/analytics.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nepo Mall FIRS — PMO Decision-Support Dashboard">
+  <title>Dashboard — Nepo Mall FIRS</title>
+  <link rel="stylesheet" href="../css/design-system.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+<div class="admin-layout">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="admin-sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">N</div>
+        <div>
+          <div class="logo-text">Nepo Mall</div>
+          <div class="logo-sub">PMO Dashboard</div>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">MAIN MENU</div>
+      <a href="index.html" class="sidebar-link active">
+        <span class="link-icon">📊</span> Dashboard
+      </a>
+      <a href="hitl.html" class="sidebar-link" id="hitl-link">
+        <span class="link-icon">🔍</span> HITL Review
+        <span class="link-badge" id="hitl-badge">0</span>
+      </a>
+      <a href="analytics.html" class="sidebar-link">
+        <span class="link-icon">📈</span> Analytics
+      </a>
+
+      <div class="sidebar-section-label">SYSTEM</div>
+      <a href="../index.html" class="sidebar-link">
+        <span class="link-icon">🏠</span> Back to Portal
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="#">FIRS v1.0 • BERT-Powered</a>
+    </div>
+  </aside>
+
+  <!-- ========== CONTENT ========== -->
+  <main class="admin-content">
+
+    <!-- Top Bar -->
+    <header class="admin-topbar">
+      <div class="flex items-center gap-4">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+        <span class="topbar-title">Dashboard</span>
+      </div>
+      <div class="topbar-right">
+        <div class="flex items-center gap-2 text-sm" style="color: var(--success-600);">
+          <span class="live-dot"></span> Live
+        </div>
+        <div class="topbar-user">
+          <span class="topbar-avatar">PMO</span>
+          <span>Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <div class="admin-page">
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Open Issues</div>
+          <div class="kpi-value" id="kpi-open">—</div>
+          <div class="kpi-trend" id="kpi-open-trend"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Critical Priority</div>
+          <div class="kpi-value pulse" id="kpi-critical" style="color: var(--priority-critical);">—</div>
+          <div class="kpi-trend" id="kpi-critical-trend"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Resolution Time</div>
+          <div class="kpi-value" id="kpi-resolution">—</div>
+          <div class="kpi-trend" id="kpi-resolution-trend"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">AI Accuracy</div>
+          <div class="kpi-value" id="kpi-accuracy">—</div>
+          <div class="kpi-trend" id="kpi-accuracy-trend"></div>
+        </div>
+      </div>
+
+      <!-- View Controls -->
+      <div class="view-controls">
+        <div class="segmented-control" id="view-toggle">
+          <button class="segmented-btn active" data-view="kanban">Kanban</button>
+          <button class="segmented-btn" data-view="table">Table</button>
+        </div>
+        <div class="filter-bar" id="filter-bar" style="margin-bottom:0; flex:1; justify-content:flex-end;">
+          <select class="form-select" id="filter-category">
+            <option value="">All Categories</option>
+          </select>
+          <select class="form-select" id="filter-priority">
+            <option value="">All Priorities</option>
+          </select>
+          <select class="form-select" id="filter-status">
+            <option value="">All Statuses</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Kanban Board -->
+      <div class="kanban-board" id="kanban-board"></div>
+
+      <!-- Data Table (hidden by default) -->
+      <div class="table-container hidden" id="table-container">
+        <table class="data-table" id="data-table">
+          <thead>
+            <tr>
+              <th data-sort="id">ID <span class="sort-icon">↕</span></th>
+              <th data-sort="tenant">Tenant <span class="sort-icon">↕</span></th>
+              <th data-sort="category">Category <span class="sort-icon">↕</span></th>
+              <th data-sort="priority">Priority Score <span class="sort-icon">↕</span></th>
+              <th data-sort="status">Status <span class="sort-icon">↕</span></th>
+              <th data-sort="submitted">Submitted <span class="sort-icon">↕</span></th>
+              <th data-sort="assigned">Assigned To <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+
+    </div><!-- .admin-page -->
+  </main>
+</div><!-- .admin-layout -->
+
+<script type="module" src="../js/admin-dashboard.js"></script>
+</body>
+</html>

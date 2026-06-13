@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nepo Mall Angeles City — Report a facility issue. Describe your concern in English, Filipino, or Taglish.">
+  <title>Report an Issue — Nepo Mall</title>
+  <link rel="stylesheet" href="../css/design-system.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/tenant.css">
+</head>
+<body>
+
+  <!-- ========== Header ========== -->
+  <header class="tenant-header">
+    <a href="../index.html" class="logo">
+      <div class="logo-icon">N</div>
+      <div class="logo-text">Nepo Mall</div>
+    </a>
+    <a href="../index.html" class="back-link">← Back to Portal</a>
+  </header>
+
+  <!-- ========== Main Content ========== -->
+  <main class="tenant-main">
+    <h1 class="page-title">Report a Facility Issue</h1>
+    <p class="page-subtitle">Describe your concern in English, Filipino, or Taglish — our AI system will process it automatically.</p>
+
+    <form id="reportForm" class="report-form" novalidate>
+
+      <!-- ===== Tenant Information ===== -->
+      <div class="section-divider">Tenant Information</div>
+
+      <div class="form-group">
+        <label class="form-label">Store / Business <span class="required">*</span></label>
+        <div class="search-select-wrapper">
+          <input
+            type="text"
+            id="tenantSearch"
+            class="form-input"
+            placeholder="Search for your store..."
+            autocomplete="off"
+          >
+          <div id="tenantDropdown" class="search-dropdown"></div>
+        </div>
+        <input type="hidden" id="tenantId" value="">
+        <div id="tenantError" class="form-error hidden">Please select your store.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contact Person</label>
+        <input type="text" id="contactPerson" class="form-input" placeholder="Auto-filled from selection" readonly>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input type="text" id="phoneNumber" class="form-input" placeholder="Auto-filled from selection" readonly>
+      </div>
+
+      <!-- ===== Issue Details ===== -->
+      <div class="section-divider">Issue Details</div>
+
+      <div class="form-group">
+        <label class="form-label">Category <span class="required">*</span></label>
+        <select id="categorySelect" class="form-select">
+          <option value="">— Select a category —</option>
+        </select>
+        <div id="categoryError" class="form-error hidden">Please select a category.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description <span class="required">*</span></label>
+        <textarea
+          id="descriptionText"
+          class="form-textarea"
+          maxlength="1000"
+          placeholder="Ilarawan ang problema... / Describe the issue...
+
+e.g., &quot;Yung aircon sa store namin parang hindi na gumagana, sobrang init na dito.&quot;"
+        ></textarea>
+        <div id="charCounter" class="char-counter">0 / 1,000</div>
+        <div id="descriptionError" class="form-error hidden">Please describe the issue (at least 10 characters).</div>
+
+        <div class="lang-indicators mt-2">
+          <span class="lang-badge">🇵🇭 Filipino</span>
+          <span class="lang-badge">🇺🇸 English</span>
+          <span class="lang-badge">🔀 Taglish</span>
+          <span class="lang-badge">🔧 Technical Jargon</span>
+        </div>
+      </div>
+
+      <!-- ===== Urgency Assessment ===== -->
+      <div class="section-divider">Urgency Assessment</div>
+
+      <div class="form-group">
+        <div class="urgency-toggle" id="urgencyToggle">
+          <div class="urgency-option low" data-value="low">
+            <span class="urgency-icon">🟢</span>
+            <span class="urgency-label">Low</span>
+          </div>
+          <div class="urgency-option medium active" data-value="medium">
+            <span class="urgency-icon">🟡</span>
+            <span class="urgency-label">Medium</span>
+          </div>
+          <div class="urgency-option urgent" data-value="urgent">
+            <span class="urgency-icon">🔴</span>
+            <span class="urgency-label">Urgent</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Photo Upload ===== -->
+      <div class="section-divider">Photo Upload (Optional)</div>
+
+      <div class="form-group">
+        <div class="file-drop-zone" id="fileDropZone">
+          <div class="drop-icon">📷</div>
+          <div class="drop-text">Upload a photo (optional)</div>
+          <div class="drop-hint">Drag &amp; drop or click to browse</div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden">
+        <div id="filePreview" class="file-preview hidden">
+          <img id="previewThumb" src="" alt="Preview">
+          <div>
+            <div id="previewName" class="file-name"></div>
+            <div id="previewSize" class="file-size"></div>
+          </div>
+          <button type="button" id="fileRemove" class="file-remove" title="Remove file">×</button>
+        </div>
+      </div>
+
+      <!-- ===== Submit ===== -->
+      <div class="submit-area">
+        <button type="submit" class="btn btn-primary btn-lg">Submit Report</button>
+      </div>
+    </form>
+
+    <!-- ========== Recent Submissions ========== -->
+    <div class="recent-section">
+      <button type="button" class="recent-toggle" id="recentToggle">
+        <span>Your Recent Submissions</span>
+        <span class="arrow" id="recentArrow">▸</span>
+      </button>
+      <div id="recentList" class="recent-list hidden"></div>
+    </div>
+  </main>
+
+  <script type="module" src="../js/tenant-app.js"></script>
+</body>
+</html>
