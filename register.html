@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Register your store as a tenant in the Nepo Mall Facility Issue Reporting System.">
+  <title>Register — Nepo Mall FIRS</title>
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-6);
+      background: var(--gray-50);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 540px;
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-8);
+    }
+
+    .auth-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: var(--sp-6);
+    }
+    .auth-logo .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--primary-600);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: var(--sp-3);
+    }
+    .auth-logo .logo-title {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .auth-logo .logo-subtitle {
+      font-size: var(--text-sm);
+      color: var(--gray-500);
+      margin-top: var(--sp-1);
+    }
+
+    .auth-form .form-group {
+      margin-bottom: var(--sp-5);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+
+    .auth-submit {
+      width: 100%;
+      padding: 12px;
+      font-size: var(--text-base);
+      margin-top: var(--sp-2);
+    }
+
+    .auth-divider {
+      text-align: center;
+      margin: var(--sp-6) 0;
+      position: relative;
+    }
+    .auth-divider::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: var(--gray-200);
+    }
+    .auth-divider span {
+      background: #fff;
+      padding: 0 var(--sp-3);
+      position: relative;
+      font-size: var(--text-xs);
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .auth-alt {
+      text-align: center;
+      font-size: var(--text-sm);
+      color: var(--gray-500);
+    }
+    .auth-alt a {
+      color: var(--primary-600);
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .auth-alt a:hover { text-decoration: underline; }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--sp-6);
+      font-size: var(--text-xs);
+      color: var(--gray-400);
+    }
+
+    .auth-error {
+      background: var(--danger-50);
+      border: 1px solid var(--danger-100);
+      color: var(--danger-600);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--sp-5);
+      display: none;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+    .auth-error.show { display: flex; }
+
+    .auth-success {
+      background: var(--success-50);
+      border: 1px solid var(--success-100);
+      color: var(--success-700);
+      border-radius: var(--radius-md);
+      padding: var(--sp-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--sp-5);
+      display: none;
+      text-align: center;
+    }
+    .auth-success.show { display: block; }
+    .auth-success .success-title {
+      font-weight: 600;
+      font-size: var(--text-base);
+      margin-bottom: var(--sp-2);
+    }
+
+    .password-strength {
+      height: 4px;
+      background: var(--gray-200);
+      border-radius: var(--radius-full);
+      margin-top: var(--sp-2);
+      overflow: hidden;
+    }
+    .password-strength-fill {
+      height: 100%;
+      border-radius: var(--radius-full);
+      transition: width 0.2s ease, background 0.2s ease;
+      width: 0%;
+    }
+
+    @media (max-width: 540px) {
+      .form-row { grid-template-columns: 1fr; }
+      .auth-card { padding: var(--sp-6); }
+    }
+    @media (max-width: 480px) {
+      .auth-card {
+        border: none;
+        background: transparent;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-icon">N</div>
+        <div class="logo-title">Nepo Mall</div>
+        <div class="logo-subtitle">Register Your Store</div>
+      </div>
+
+      <div class="auth-error" id="authError">
+        <span>⚠</span>
+        <span id="authErrorText">Something went wrong.</span>
+      </div>
+
+      <div class="auth-success" id="authSuccess">
+        <div class="success-title">✅ Registration Successful!</div>
+        <p>Your tenant account has been created. You can now sign in.</p>
+        <a href="index.html" class="btn btn-primary" style="margin-top:var(--sp-4);display:inline-flex;">Go to Sign In</a>
+      </div>
+
+      <form id="registerForm" class="auth-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="storeName">Store / Business Name <span class="required">*</span></label>
+          <input type="text" id="storeName" class="form-input" placeholder="e.g., Jollibee, Mercury Drug" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="storeFloor">Store Location (Floor) <span class="required">*</span></label>
+            <select id="storeFloor" class="form-select" required>
+              <option value="">— Select Floor —</option>
+              <option value="GF">GF — Ground Floor</option>
+              <option value="2F">2F — Second Floor</option>
+              <option value="3F">3F — Third Floor</option>
+              <option value="4F">4F — Fourth Floor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="storeZone">Zone</label>
+            <select id="storeZone" class="form-select">
+              <option value="">— Select Zone —</option>
+              <option value="A">Zone A</option>
+              <option value="B">Zone B</option>
+              <option value="C">Zone C</option>
+              <option value="D">Zone D</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="contactPerson">Contact Person <span class="required">*</span></label>
+            <input type="text" id="contactPerson" class="form-input" placeholder="Full name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="phoneNumber">Phone Number <span class="required">*</span></label>
+            <input type="tel" id="phoneNumber" class="form-input" placeholder="0917-000-0000" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="regEmail">Email Address <span class="required">*</span></label>
+          <input type="email" id="regEmail" class="form-input" placeholder="store@example.com" autocomplete="email" required>
+          <div class="form-hint">This will be used to sign in to the system.</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password <span class="required">*</span></label>
+            <input type="password" id="regPassword" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password" required>
+            <div class="password-strength">
+              <div class="password-strength-fill" id="passwordStrengthFill"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regConfirm">Confirm Password <span class="required">*</span></label>
+            <input type="password" id="regConfirm" class="form-input" placeholder="Re-type password" autocomplete="new-password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary auth-submit" id="registerBtn">
+          Create Tenant Account
+        </button>
+      </form>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <div class="auth-alt">
+        Already registered? <a href="index.html">Sign in.</a>
+      </div>
+    </div>
+
+    <div class="auth-footer">
+      © 2026 Nepo Mall Angeles City — FIRS v1.0
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('registerForm');
+    const authError = document.getElementById('authError');
+    const authErrorText = document.getElementById('authErrorText');
+    const authSuccess = document.getElementById('authSuccess');
+    const registerBtn = document.getElementById('registerBtn');
+    const passwordInput = document.getElementById('regPassword');
+    const confirmInput = document.getElementById('regConfirm');
+    const strengthFill = document.getElementById('passwordStrengthFill');
+
+    // Password strength indicator
+    passwordInput.addEventListener('input', function() {
+      const val = this.value;
+      let strength = 0;
+      if (val.length >= 6) strength++;
+      if (val.length >= 10) strength++;
+      if (/[A-Z]/.test(val)) strength++;
+      if (/[0-9]/.test(val)) strength++;
+      if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+      const percent = (strength / 5) * 100;
+      strengthFill.style.width = percent + '%';
+
+      if (strength <= 1) strengthFill.style.background = 'var(--danger-500)';
+      else if (strength <= 3) strengthFill.style.background = 'var(--warning-500)';
+      else strengthFill.style.background = 'var(--success-500)';
+    });
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      authError.classList.remove('show');
+
+      const storeName = document.getElementById('storeName').value.trim();
+      const floor = document.getElementById('storeFloor').value;
+      const zone = document.getElementById('storeZone').value;
+      const contact = document.getElementById('contactPerson').value.trim();
+      const phone = document.getElementById('phoneNumber').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = passwordInput.value;
+      const confirm = confirmInput.value;
+
+      // Validation
+      if (!storeName) return showError('Please enter your store or business name.');
+      if (!floor) return showError('Please select your store floor.');
+      if (!contact) return showError('Please enter the contact person name.');
+      if (!phone) return showError('Please enter a phone number.');
+      if (!email) return showError('Please enter an email address.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email address.');
+      if (password.length < 6) return showError('Password must be at least 6 characters.');
+      if (password !== confirm) return showError('Passwords do not match.');
+
+      // Check if email is PMO domain
+      if (email.endsWith('@nepomall.com') || email.endsWith('@nepomall-pmo.com')) {
+        return showError('PMO accounts cannot be registered here. Contact administration.');
+      }
+
+      // Simulate registration
+      registerBtn.disabled = true;
+      registerBtn.textContent = 'Creating account...';
+
+      setTimeout(function() {
+        // Generate tenant ID
+        const existingTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+        const tenantId = 'T' + String(51 + existingTenants.length).padStart(3, '0');
+
+        const newTenant = {
+          id: tenantId,
+          name: storeName,
+          floor: floor,
+          zone: zone || 'A',
+          contact: contact,
+          phone: phone,
+          email: email,
+          type: 'Registered Store',
+          registeredAt: new Date().toISOString()
+        };
+
+        existingTenants.push(newTenant);
+        localStorage.setItem('firs_registered_tenants', JSON.stringify(existingTenants));
+
+        // Show success
+        form.style.display = 'none';
+        authSuccess.classList.add('show');
+        registerBtn.disabled = false;
+        registerBtn.textContent = 'Create Tenant Account';
+      }, 1000);
+    });
+
+    function showError(msg) {
+      authErrorText.textContent = msg;
+      authError.classList.add('show');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

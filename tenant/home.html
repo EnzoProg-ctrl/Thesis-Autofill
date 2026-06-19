@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tenant Home Dashboard — Nepo Mall Facility Issue Reporting System. View your issues and submit new reports.">
+  <title>Home — Nepo Mall FIRS</title>
+  <link rel="stylesheet" href="../css/design-system.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/tenant.css">
+  <style>
+    /* ===== Tenant Dashboard Specific ===== */
+    .tenant-home-main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: var(--sp-8) var(--sp-6);
+    }
+
+    /* User dropdown */
+    .user-menu {
+      position: relative;
+    }
+    .user-menu-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      background: none;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      padding: 6px 12px;
+      font-size: var(--text-sm);
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: background var(--ease-fast);
+    }
+    .user-menu-btn:hover { background: var(--gray-50); }
+    .user-menu-btn .user-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-100);
+      color: var(--primary-700);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--text-xs);
+      font-weight: 600;
+    }
+    .user-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      min-width: 200px;
+      z-index: 50;
+      display: none;
+      overflow: hidden;
+    }
+    .user-dropdown.open { display: block; }
+    .user-dropdown-header {
+      padding: var(--sp-3) var(--sp-4);
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .user-dropdown-header .name {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+    .user-dropdown-header .email {
+      font-size: var(--text-xs);
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+    .user-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: 10px var(--sp-4);
+      font-size: var(--text-sm);
+      color: var(--gray-700);
+      text-decoration: none;
+      border: none;
+      background: none;
+      width: 100%;
+      cursor: pointer;
+      text-align: left;
+    }
+    .user-dropdown-item:hover { background: var(--gray-50); }
+    .user-dropdown-item.danger { color: var(--danger-600); }
+
+    /* Hero section */
+    .hero-section {
+      margin-bottom: var(--sp-8);
+    }
+    .hero-section .welcome-text {
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: var(--sp-2);
+    }
+    .hero-section .welcome-sub {
+      font-size: var(--text-sm);
+      color: var(--gray-500);
+      margin-bottom: var(--sp-6);
+    }
+    .submit-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: 14px 28px;
+      font-size: var(--text-base);
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: var(--radius-md);
+      background: var(--primary-600);
+      color: #fff;
+      transition: background var(--ease-fast);
+    }
+    .submit-cta:hover { background: var(--primary-700); color: #fff; }
+
+    /* Status summary cards */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-8);
+    }
+    .status-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-5);
+      text-align: center;
+      border-top: 3px solid var(--gray-300);
+    }
+    .status-card.awaiting { border-top-color: var(--warning-500); }
+    .status-card.in-progress { border-top-color: var(--info-500); }
+    .status-card.resolved { border-top-color: var(--success-500); }
+    .status-card .status-count {
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      color: var(--gray-900);
+      line-height: 1;
+      margin-bottom: var(--sp-2);
+    }
+    .status-card.awaiting .status-count { color: var(--warning-600); }
+    .status-card.in-progress .status-count { color: var(--info-600); }
+    .status-card.resolved .status-count { color: var(--success-600); }
+    .status-card .status-label {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--gray-500);
+    }
+
+    /* Recent reports */
+    .reports-section h2 {
+      font-size: var(--text-lg);
+      margin-bottom: var(--sp-4);
+      color: var(--gray-800);
+    }
+    .reports-table {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .reports-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+      color: var(--gray-500);
+      background: var(--gray-50);
+      border-bottom: 2px solid var(--gray-200);
+    }
+    .reports-table td {
+      padding: 14px 16px;
+      font-size: var(--text-sm);
+      color: var(--gray-700);
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: middle;
+    }
+    .reports-table tbody tr:last-child td { border-bottom: none; }
+    .reports-table tbody tr:hover { background: var(--gray-50); }
+    .report-text-preview {
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--gray-600);
+    }
+
+    /* Status badges for the table */
+    .report-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+    .report-status.new { background: #ede9fe; color: #6d28d9; }
+    .report-status.ai_processing { background: #f3e8ff; color: #7c3aed; }
+    .report-status.awaiting_review { background: var(--warning-50); color: var(--warning-600); }
+    .report-status.in_progress { background: var(--info-50); color: var(--info-600); }
+    .report-status.resolved { background: var(--success-50); color: var(--success-600); }
+
+    .report-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .empty-reports {
+      text-align: center;
+      padding: var(--sp-10) var(--sp-6);
+      color: var(--gray-400);
+    }
+    .empty-reports .empty-icon { font-size: 40px; margin-bottom: var(--sp-3); }
+    .empty-reports .empty-title {
+      font-size: var(--text-base);
+      font-weight: 600;
+      color: var(--gray-600);
+      margin-bottom: var(--sp-1);
+    }
+    .empty-reports .empty-sub { font-size: var(--text-sm); }
+
+    @media (max-width: 768px) {
+      .status-grid { grid-template-columns: 1fr; }
+      .tenant-home-main { padding: var(--sp-6) var(--sp-4); }
+      .reports-table { display: block; overflow-x: auto; }
+    }
+    @media (max-width: 480px) {
+      .hero-section .welcome-text { font-size: var(--text-xl); }
+      .submit-cta { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== Header ========== -->
+  <header class="tenant-header">
+    <a href="../index.html" class="logo">
+      <div class="logo-icon">N</div>
+      <div class="logo-text">Nepo Mall <span>FIRS</span></div>
+    </a>
+
+    <div class="user-menu" id="userMenu">
+      <button class="user-menu-btn" id="userMenuBtn" type="button">
+        <span class="user-avatar" id="userAvatar">?</span>
+        <span id="userDisplayName" class="hide-mobile">Tenant</span>
+        <span style="font-size:10px;color:var(--gray-400);">▼</span>
+      </button>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="user-dropdown-header">
+          <div class="name" id="dropdownName">—</div>
+          <div class="email" id="dropdownEmail">—</div>
+        </div>
+        <a href="index.html" class="user-dropdown-item">📝 Submit a Report</a>
+        <button class="user-dropdown-item danger" id="logoutBtn">🚪 Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== Main Content ========== -->
+  <main class="tenant-home-main">
+
+    <!-- Hero -->
+    <div class="hero-section">
+      <h1 class="welcome-text" id="welcomeText">Welcome back!</h1>
+      <p class="welcome-sub">Manage your facility issue reports from here. Need to report something new?</p>
+      <a href="index.html" class="submit-cta">
+        ➕ Submit a New Issue Report
+      </a>
+    </div>
+
+    <!-- Status Summary Cards -->
+    <div class="status-grid">
+      <div class="status-card awaiting">
+        <div class="status-count" id="countAwaiting">0</div>
+        <div class="status-label">Awaiting Review</div>
+      </div>
+      <div class="status-card in-progress">
+        <div class="status-count" id="countInProgress">0</div>
+        <div class="status-label">In Progress</div>
+      </div>
+      <div class="status-card resolved">
+        <div class="status-count" id="countResolved">0</div>
+        <div class="status-label">Resolved</div>
+      </div>
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="reports-section">
+      <h2>Your Recent Reports</h2>
+      <div id="reportsContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import { TENANTS, CATEGORIES, STATUS_LIST, getTenantById, getCategoryLabel } from '../js/mock-data.js';
+    import { loadIssues, formatDate, formatRelativeTime } from '../js/shared.js';
+
+    // ===== Session Check =====
+    const sessionUser = sessionStorage.getItem('firs_user');
+    let currentUser = null;
+
+    if (sessionUser) {
+      try { currentUser = JSON.parse(sessionUser); } catch(e) { /* ignore */ }
+    }
+
+    if (!currentUser || currentUser.role !== 'tenant') {
+      currentUser = currentUser || { email: 'demo@store.com', name: 'Demo Store', role: 'tenant' };
+    }
+
+    // ===== Populate User Info =====
+    const displayName = currentUser.storeName || currentUser.name || currentUser.email.split('@')[0];
+    const initials = displayName.substring(0, 2).toUpperCase();
+
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('userDisplayName').textContent = displayName;
+    document.getElementById('dropdownName').textContent = displayName;
+    document.getElementById('dropdownEmail').textContent = currentUser.email;
+    document.getElementById('welcomeText').textContent = `Welcome back, ${displayName}!`;
+
+    // ===== User Dropdown Toggle =====
+    const menuBtn = document.getElementById('userMenuBtn');
+    const dropdown = document.getElementById('userDropdown');
+
+    menuBtn.addEventListener('click', () => {
+      dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('userMenu').contains(e.target)) {
+        dropdown.classList.remove('open');
+      }
+    });
+
+    // ===== Logout =====
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.removeItem('firs_user');
+      window.location.href = '../index.html';
+    });
+
+    // ===== Resolve Tenant ID =====
+    const userEmail = currentUser.email.toLowerCase();
+    let resolvedTenantId = currentUser.tenantId || null;
+
+    if (!resolvedTenantId) {
+      // 1) Check registered tenants by exact email
+      const registeredTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+      const regMatch = registeredTenants.find(t => t.email && t.email.toLowerCase() === userEmail);
+      if (regMatch) {
+        resolvedTenantId = regMatch.id;
+      }
+    }
+
+    if (!resolvedTenantId) {
+      // 2) Check built-in TENANTS by exact name match (session name === tenant name)
+      const sessionName = (currentUser.storeName || currentUser.name || '').toLowerCase();
+      if (sessionName) {
+        const builtInMatch = TENANTS.find(t => t.name.toLowerCase() === sessionName);
+        if (builtInMatch) {
+          resolvedTenantId = builtInMatch.id;
+        }
+      }
+    }
+
+    // ===== Load & Filter Issues =====
+    const allIssues = loadIssues();
+    const myIssues = resolvedTenantId
+      ? allIssues.filter(issue => issue.tenantId === resolvedTenantId)
+      : [];
+
+    // ===== Status Counts =====
+    const awaitingCount = myIssues.filter(i =>
+      i.status === 'new' || i.status === 'ai_processing' || i.status === 'awaiting_review'
+    ).length;
+    const inProgressCount = myIssues.filter(i => i.status === 'in_progress').length;
+    const resolvedCount = myIssues.filter(i => i.status === 'resolved').length;
+
+    document.getElementById('countAwaiting').textContent = awaitingCount;
+    document.getElementById('countInProgress').textContent = inProgressCount;
+    document.getElementById('countResolved').textContent = resolvedCount;
+
+    // ===== Recent Reports Table =====
+    const container = document.getElementById('reportsContainer');
+
+    if (myIssues.length === 0) {
+      container.innerHTML = `
+        <div class="empty-reports">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">No reports yet</div>
+          <div class="empty-sub">Submit your first facility issue report to get started.</div>
+        </div>
+      `;
+    } else {
+      const statusLabels = {
+        'new': 'New',
+        'ai_processing': 'AI Processing',
+        'awaiting_review': 'Awaiting Review',
+        'in_progress': 'In Progress',
+        'resolved': 'Resolved',
+      };
+
+      const rows = myIssues.slice(0, 20).map(issue => {
+        const category = getCategoryLabel(issue.category || issue.aiCategory);
+        const statusClass = issue.status.replace(/ /g, '_');
+        const statusText = statusLabels[issue.status] || issue.status;
+        const preview = issue.text.length > 80 ? issue.text.substring(0, 80) + '...' : issue.text;
+        const dateStr = formatDate(issue.submittedAt);
+
+        return `
+          <tr>
+            <td><strong>${issue.id}</strong></td>
+            <td class="report-text-preview" title="${issue.text.replace(/"/g, '&quot;')}">${escapeHtml(preview)}</td>
+            <td class="hide-mobile">${category}</td>
+            <td>${dateStr}</td>
+            <td><span class="report-status ${statusClass}">${statusText}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="reports-table">
+          <thead>
+            <tr>
+              <th>Issue ID</th>
+              <th>Description</th>
+              <th class="hide-mobile">Category</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

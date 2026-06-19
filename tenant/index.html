@@ -13,11 +13,11 @@
 
   <!-- ========== Header ========== -->
   <header class="tenant-header">
-    <a href="../index.html" class="logo">
+    <a href="home.html" class="logo">
       <div class="logo-icon">N</div>
-      <div class="logo-text">Nepo Mall</div>
+      <div class="logo-text">Nepo Mall <span>FIRS</span></div>
     </a>
-    <a href="../index.html" class="back-link">← Back to Portal</a>
+    <a href="home.html" class="back-link">← Back to Home</a>
   </header>
 
   <!-- ========== Main Content ========== -->
@@ -31,36 +31,31 @@
       <div class="section-divider">Tenant Information</div>
 
       <div class="form-group">
-        <label class="form-label">Store / Business <span class="required">*</span></label>
-        <div class="search-select-wrapper">
-          <input
-            type="text"
-            id="tenantSearch"
-            class="form-input"
-            placeholder="Search for your store..."
-            autocomplete="off"
-          >
-          <div id="tenantDropdown" class="search-dropdown"></div>
-        </div>
-        <input type="hidden" id="tenantId" value="">
-        <div id="tenantError" class="form-error hidden">Please select your store.</div>
+        <label class="form-label" for="storeName">Store / Business <span class="required">*</span></label>
+        <input
+          type="text"
+          id="storeName"
+          class="form-input"
+          placeholder="Your store or business name"
+        >
+        <div id="storeNameError" class="form-error hidden">Please enter your store name.</div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Contact Person</label>
-        <input type="text" id="contactPerson" class="form-input" placeholder="Auto-filled from selection" readonly>
+        <label class="form-label" for="contactPerson">Contact Person</label>
+        <input type="text" id="contactPerson" class="form-input" placeholder="Full name">
       </div>
 
       <div class="form-group">
-        <label class="form-label">Phone Number</label>
-        <input type="text" id="phoneNumber" class="form-input" placeholder="Auto-filled from selection" readonly>
+        <label class="form-label" for="phoneNumber">Phone Number</label>
+        <input type="tel" id="phoneNumber" class="form-input" placeholder="0917-000-0000">
       </div>
 
       <!-- ===== Issue Details ===== -->
       <div class="section-divider">Issue Details</div>
 
       <div class="form-group">
-        <label class="form-label">Category <span class="required">*</span></label>
+        <label class="form-label" for="categorySelect">Category <span class="required">*</span></label>
         <select id="categorySelect" class="form-select">
           <option value="">— Select a category —</option>
         </select>
@@ -68,7 +63,7 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Description <span class="required">*</span></label>
+        <label class="form-label" for="descriptionText">Description <span class="required">*</span></label>
         <textarea
           id="descriptionText"
           class="form-textarea"
@@ -85,26 +80,6 @@ e.g., &quot;Yung aircon sa store namin parang hindi na gumagana, sobrang init na
           <span class="lang-badge">🇺🇸 English</span>
           <span class="lang-badge">🔀 Taglish</span>
           <span class="lang-badge">🔧 Technical Jargon</span>
-        </div>
-      </div>
-
-      <!-- ===== Urgency Assessment ===== -->
-      <div class="section-divider">Urgency Assessment</div>
-
-      <div class="form-group">
-        <div class="urgency-toggle" id="urgencyToggle">
-          <div class="urgency-option low" data-value="low">
-            <span class="urgency-icon">🟢</span>
-            <span class="urgency-label">Low</span>
-          </div>
-          <div class="urgency-option medium active" data-value="medium">
-            <span class="urgency-icon">🟡</span>
-            <span class="urgency-label">Medium</span>
-          </div>
-          <div class="urgency-option urgent" data-value="urgent">
-            <span class="urgency-icon">🔴</span>
-            <span class="urgency-label">Urgent</span>
-          </div>
         </div>
       </div>
 
@@ -133,15 +108,6 @@ e.g., &quot;Yung aircon sa store namin parang hindi na gumagana, sobrang init na
         <button type="submit" class="btn btn-primary btn-lg">Submit Report</button>
       </div>
     </form>
-
-    <!-- ========== Recent Submissions ========== -->
-    <div class="recent-section">
-      <button type="button" class="recent-toggle" id="recentToggle">
-        <span>Your Recent Submissions</span>
-        <span class="arrow" id="recentArrow">▸</span>
-      </button>
-      <div id="recentList" class="recent-list hidden"></div>
-    </div>
   </main>
 
   <script type="module" src="../js/tenant-app.js"></script>

@@ -1,16 +1,14 @@
 /* ============================================================
-   Tenant Portal — Report Form Logic
+   Tenant Portal — Report Form Logic (Refactored)
    ============================================================ */
 
-import { TENANTS, CATEGORIES, getTenantById, getCategoryLabel, getCategoryIcon, getStatusInfo } from './mock-data.js';
-import { loadIssues, addIssue, generateId, formatRelativeTime, showModal, closeModal, showToast, escapeHtml, debounce } from './shared.js';
+import { TENANTS, CATEGORIES, getCategoryLabel, getCategoryIcon } from './mock-data.js';
+import { loadIssues, addIssue, generateId, showModal, closeModal, showToast, escapeHtml } from './shared.js';
 import { analyzeText } from './mock-bert.js';
 
 /* ---------- DOM References ---------- */
-const tenantSearchInput   = document.getElementById('tenantSearch');
-const tenantDropdown      = document.getElementById('tenantDropdown');
-const tenantIdInput       = document.getElementById('tenantId');
-const tenantError         = document.getElementById('tenantError');
+const storeNameInput      = document.getElementById('storeName');
+const storeNameError      = document.getElementById('storeNameError');
 const contactPersonInput  = document.getElementById('contactPerson');
 const phoneNumberInput    = document.getElementById('phoneNumber');
 const categorySelect      = document.getElementById('categorySelect');
@@ -18,7 +16,6 @@ const categoryError       = document.getElementById('categoryError');
 const descriptionText     = document.getElementById('descriptionText');
 const charCounter         = document.getElementById('charCounter');
 const descriptionError    = document.getElementById('descriptionError');
-const urgencyToggle       = document.getElementById('urgencyToggle');
 const fileDropZone        = document.getElementById('fileDropZone');
 const fileInput           = document.getElementById('fileInput');
 const filePreview         = document.getElementById('filePreview');
@@ -27,88 +24,65 @@ const previewName         = document.getElementById('previewName');
 const previewSize         = document.getElementById('previewSize');
 const fileRemove          = document.getElementById('fileRemove');
 const reportForm          = document.getElementById('reportForm');
-const recentToggle        = document.getElementById('recentToggle');
-const recentArrow         = document.getElementById('recentArrow');
-const recentList          = document.getElementById('recentList');
 
 /* ---------- State ---------- */
-let selectedTenantId = '';
-let selectedUrgency  = 'medium';
+let resolvedTenantId = null;
 let selectedFile     = null;
-let recentOpen       = false;
 
 
 /* ==========================================================
-   1. Searchable Tenant Dropdown
+   1. Auto-Fill from Session
    ========================================================== */
 
-function renderTenantDropdown(filter = '') {
-  const lowerFilter = filter.toLowerCase().trim();
-  const filtered = lowerFilter
-    ? TENANTS.filter(t =>
-        t.name.toLowerCase().includes(lowerFilter) ||
-        t.id.toLowerCase().includes(lowerFilter) ||
-        t.type.toLowerCase().includes(lowerFilter) ||
-        t.floor.toLowerCase().includes(lowerFilter)
-      )
-    : TENANTS;
+function autoFillFromSession() {
+  const raw = sessionStorage.getItem('firs_user');
+  if (!raw) return;
 
-  if (filtered.length === 0) {
-    tenantDropdown.innerHTML = '<div class="search-dropdown-item" style="color:var(--gray-400);cursor:default;">No tenants found</div>';
-  } else {
-    tenantDropdown.innerHTML = filtered.map(t => `
-      <div class="search-dropdown-item ${t.id === selectedTenantId ? 'selected' : ''}" data-id="${t.id}">
-        <div>${escapeHtml(t.name)}</div>
-        <div class="item-sub">${t.floor}, Zone ${t.zone} · ${escapeHtml(t.type)}</div>
-      </div>
-    `).join('');
+  let user;
+  try { user = JSON.parse(raw); } catch(e) { return; }
+
+  const userEmail = (user.email || '').toLowerCase();
+
+  // 1) Check if session already has a tenantId
+  if (user.tenantId) {
+    resolvedTenantId = user.tenantId;
   }
 
-  tenantDropdown.classList.add('open');
+  // 2) Try matching registered tenants by exact email
+  if (!resolvedTenantId) {
+    const registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+    const regMatch = registered.find(t => t.email && t.email.toLowerCase() === userEmail);
+    if (regMatch) {
+      resolvedTenantId = regMatch.id;
+      storeNameInput.value = regMatch.name || '';
+      contactPersonInput.value = regMatch.contact || '';
+      phoneNumberInput.value = regMatch.phone || '';
+      return;
+    }
+  }
+
+  // 3) Try matching built-in TENANTS by exact name
+  if (!resolvedTenantId) {
+    const sessionName = (user.storeName || user.name || '').toLowerCase();
+    if (sessionName) {
+      const builtIn = TENANTS.find(t => t.name.toLowerCase() === sessionName);
+      if (builtIn) {
+        resolvedTenantId = builtIn.id;
+        storeNameInput.value = builtIn.name;
+        contactPersonInput.value = builtIn.contact;
+        phoneNumberInput.value = builtIn.phone;
+        return;
+      }
+    }
+  }
+
+  // 4) Fallback: populate from session data if available
+  storeNameInput.value = user.storeName || user.name || '';
+  contactPersonInput.value = user.contact || '';
+  phoneNumberInput.value = user.phone || '';
 }
 
-function selectTenant(tenantId) {
-  const tenant = getTenantById(tenantId);
-  if (!tenant) return;
-
-  selectedTenantId = tenant.id;
-  tenantIdInput.value = tenant.id;
-  tenantSearchInput.value = tenant.name;
-  contactPersonInput.value = tenant.contact;
-  phoneNumberInput.value = tenant.phone;
-  tenantDropdown.classList.remove('open');
-  tenantError.classList.add('hidden');
-  tenantSearchInput.classList.remove('error');
-
-  // Refresh recent submissions for this tenant
-  renderRecentSubmissions();
-}
-
-tenantSearchInput.addEventListener('focus', () => {
-  renderTenantDropdown(tenantSearchInput.value);
-});
-
-tenantSearchInput.addEventListener('input', debounce(() => {
-  selectedTenantId = '';
-  tenantIdInput.value = '';
-  contactPersonInput.value = '';
-  phoneNumberInput.value = '';
-  renderTenantDropdown(tenantSearchInput.value);
-}, 150));
-
-tenantDropdown.addEventListener('click', (e) => {
-  const item = e.target.closest('.search-dropdown-item');
-  if (item && item.dataset.id) {
-    selectTenant(item.dataset.id);
-  }
-});
-
-// Close dropdown when clicking outside
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.search-select-wrapper')) {
-    tenantDropdown.classList.remove('open');
-  }
-});
+autoFillFromSession();
 
 
 /* ==========================================================
@@ -158,21 +132,7 @@ descriptionText.addEventListener('input', () => {
 
 
 /* ==========================================================
-   4. Urgency Toggle
-   ========================================================== */
-
-urgencyToggle.addEventListener('click', (e) => {
-  const option = e.target.closest('.urgency-option');
-  if (!option) return;
-
-  urgencyToggle.querySelectorAll('.urgency-option').forEach(o => o.classList.remove('active'));
-  option.classList.add('active');
-  selectedUrgency = option.dataset.value;
-});
-
-
-/* ==========================================================
-   5. File Upload (Click + Drag-and-Drop)
+   4. File Upload (Click + Drag-and-Drop)
    ========================================================== */
 
 fileDropZone.addEventListener('click', () => fileInput.click());
@@ -209,7 +169,6 @@ function handleFile(file) {
 
   selectedFile = file;
 
-  // Build thumbnail
   const reader = new FileReader();
   reader.onload = (e) => {
     previewThumb.src = e.target.result;
@@ -241,20 +200,20 @@ function formatFileSize(bytes) {
 
 
 /* ==========================================================
-   6. Form Validation
+   5. Form Validation
    ========================================================== */
 
 function validateForm() {
   let valid = true;
 
-  // Tenant
-  if (!selectedTenantId) {
-    tenantError.classList.remove('hidden');
-    tenantSearchInput.classList.add('error');
+  // Store name
+  if (!storeNameInput.value.trim()) {
+    storeNameError.classList.remove('hidden');
+    storeNameInput.classList.add('error');
     valid = false;
   } else {
-    tenantError.classList.add('hidden');
-    tenantSearchInput.classList.remove('error');
+    storeNameError.classList.add('hidden');
+    storeNameInput.classList.remove('error');
   }
 
   // Category
@@ -280,9 +239,17 @@ function validateForm() {
   return valid;
 }
 
+// Clear errors on input
+storeNameInput.addEventListener('input', () => {
+  if (storeNameInput.value.trim()) {
+    storeNameError.classList.add('hidden');
+    storeNameInput.classList.remove('error');
+  }
+});
+
 
 /* ==========================================================
-   7. Submit Flow
+   6. Submit Flow
    ========================================================== */
 
 reportForm.addEventListener('submit', async (e) => {
@@ -298,22 +265,36 @@ reportForm.addEventListener('submit', async (e) => {
     <div class="processing-overlay">
       <div class="spinner spinner-lg"></div>
       <div class="processing-title">Analyzing your report...</div>
-      <div class="processing-text">Analyzing your report with BERT AI...</div>
+      <div class="processing-text">Processing your description with BERT AI...</div>
     </div>
   `);
 
   // Prevent closing during processing
-  const modalEl = overlay.querySelector('.modal');
   const closeBtn = overlay.querySelector('.modal-close-btn');
   if (closeBtn) closeBtn.style.display = 'none';
   overlay.onclick = null;
 
   try {
-    // Run BERT analysis
+    // Resolve the tenant ID from the store name if not already set
+    let tenantId = resolvedTenantId;
+    if (!tenantId) {
+      // Try to find by the entered store name
+      const enteredName = storeNameInput.value.trim().toLowerCase();
+      const match = TENANTS.find(t => t.name.toLowerCase() === enteredName);
+      if (match) {
+        tenantId = match.id;
+      } else {
+        // Check registered tenants
+        const registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+        const regMatch = registered.find(t => t.name && t.name.toLowerCase() === enteredName);
+        tenantId = regMatch ? regMatch.id : 'T-SELF';
+      }
+    }
+
+    // Run BERT analysis (no selfAssessment parameter)
     const aiResult = await analyzeText(
       descriptionText.value.trim(),
-      categorySelect.value,
-      selectedUrgency
+      categorySelect.value
     );
 
     const issueId = generateId();
@@ -322,9 +303,12 @@ reportForm.addEventListener('submit', async (e) => {
     // Build the issue object
     const issue = {
       id: issueId,
-      tenantId: selectedTenantId,
+      tenantId: tenantId,
+      storeName: storeNameInput.value.trim(),
+      contactPerson: contactPersonInput.value.trim(),
+      phoneNumber: phoneNumberInput.value.trim(),
       category: categorySelect.value,
-      selfAssessment: selectedUrgency,
+      selfAssessment: null,
       status: 'awaiting_review',
       assignedTo: null,
       text: descriptionText.value.trim(),
@@ -351,14 +335,8 @@ reportForm.addEventListener('submit', async (e) => {
     };
     const estimatedResponse = responseTimeMap[aiResult.priorityLevel] || '4 – 24 hours';
 
-    // Priority badge colors
-    const priorityColorMap = {
-      critical: 'priority-badge critical',
-      high: 'priority-badge high',
-      medium: 'priority-badge medium',
-      low: 'priority-badge low',
-    };
-    const priorityBadgeClass = priorityColorMap[aiResult.priorityLevel] || 'priority-badge medium';
+    // Priority badge class
+    const priorityBadgeClass = `priority-badge ${aiResult.priorityLevel}`;
 
     // Confidence bar class
     let confBarClass = 'high';
@@ -410,10 +388,11 @@ reportForm.addEventListener('submit', async (e) => {
     // Re-show close button
     if (closeBtn) closeBtn.style.display = '';
 
-    // Add footer with Submit Another button
+    // Update modal header
     const modalHeader = overlay.querySelector('.modal-header h3');
     if (modalHeader) modalHeader.textContent = 'Report Confirmed';
 
+    // Add footer
     const modalContainer = overlay.querySelector('.modal');
     const existingFooter = modalContainer.querySelector('.modal-footer');
     if (existingFooter) existingFooter.remove();
@@ -432,16 +411,13 @@ reportForm.addEventListener('submit', async (e) => {
 
     footer.querySelector('#submitAnotherBtn').addEventListener('click', () => {
       closeModal();
-      resetForm();
+      clearFormForNext();
     });
 
     // Allow closing overlay again
     overlay.addEventListener('click', (ev) => {
       if (ev.target === overlay) closeModal();
     });
-
-    // Refresh recent submissions
-    renderRecentSubmissions();
 
     showToast('Issue report submitted successfully!', 'success');
 
@@ -452,18 +428,16 @@ reportForm.addEventListener('submit', async (e) => {
   }
 });
 
-function resetForm() {
-  reportForm.reset();
-  selectedTenantId = '';
-  tenantIdInput.value = '';
-  contactPersonInput.value = '';
-  phoneNumberInput.value = '';
-  selectedUrgency = 'medium';
-  selectedFile = null;
 
-  // Reset urgency toggle
-  urgencyToggle.querySelectorAll('.urgency-option').forEach(o => o.classList.remove('active'));
-  urgencyToggle.querySelector('[data-value="medium"]').classList.add('active');
+/**
+ * Clear only the issue-specific fields for submitting another report.
+ * Keeps tenant info filled since it's the same user.
+ */
+function clearFormForNext() {
+  // Clear issue fields only
+  categorySelect.value = '';
+  descriptionText.value = '';
+  selectedFile = null;
 
   // Reset file preview
   filePreview.classList.add('hidden');
@@ -475,64 +449,11 @@ function resetForm() {
   charCounter.textContent = '0 / 1,000';
   charCounter.classList.remove('warning', 'limit');
 
-  // Clear errors
-  tenantError.classList.add('hidden');
+  // Clear any validation errors
+  storeNameError.classList.add('hidden');
   categoryError.classList.add('hidden');
   descriptionError.classList.add('hidden');
-  tenantSearchInput.classList.remove('error');
+  storeNameInput.classList.remove('error');
   categorySelect.classList.remove('error');
   descriptionText.classList.remove('error');
 }
-
-
-/* ==========================================================
-   8. Recent Submissions
-   ========================================================== */
-
-function renderRecentSubmissions() {
-  if (!selectedTenantId) {
-    recentList.innerHTML = '<div class="empty-state" style="padding:var(--sp-6);"><div class="empty-state-text">Select a store to see recent submissions.</div></div>';
-    return;
-  }
-
-  const issues = loadIssues();
-  const tenantIssues = issues
-    .filter(i => i.tenantId === selectedTenantId)
-    .slice(0, 10);
-
-  if (tenantIssues.length === 0) {
-    recentList.innerHTML = '<div class="empty-state" style="padding:var(--sp-6);"><div class="empty-state-icon">📭</div><div class="empty-state-text">No submissions yet for this store.</div></div>';
-    return;
-  }
-
-  recentList.innerHTML = tenantIssues.map(issue => {
-    const statusInfo = getStatusInfo(issue.status);
-    const truncatedText = issue.text.length > 100 ? issue.text.slice(0, 100) + '...' : issue.text;
-
-    return `
-      <div class="recent-item">
-        <div class="recent-content">
-          <div class="recent-id">${escapeHtml(issue.id)}</div>
-          <div class="recent-text">${escapeHtml(truncatedText)}</div>
-          <div class="recent-meta">
-            <span class="status-badge" style="color:${statusInfo.color};">${escapeHtml(statusInfo.label)}</span>
-            <span>${formatRelativeTime(issue.submittedAt)}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-recentToggle.addEventListener('click', () => {
-  recentOpen = !recentOpen;
-  recentList.classList.toggle('hidden', !recentOpen);
-  recentArrow.classList.toggle('open', recentOpen);
-
-  if (recentOpen) {
-    renderRecentSubmissions();
-  }
-});
-
-// Initial render
-renderRecentSubmissions();

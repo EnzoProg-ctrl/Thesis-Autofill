@@ -3,206 +3,373 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Nepo Mall Angeles City — Facility Issue Reporting System. Report maintenance issues or access the PMO management dashboard.">
-  <title>Nepo Mall — Facility Issue Reporting System</title>
+  <meta name="description" content="Sign in to the Nepo Mall Facility Issue Reporting System. Report maintenance issues or access the PMO dashboard.">
+  <title>Sign In — Nepo Mall FIRS</title>
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/components.css">
   <style>
-    /* Landing page specific styles */
-    .landing {
+    .auth-page {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-6);
       background: var(--gray-50);
     }
 
-    .landing-header {
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
       background: #fff;
-      border-bottom: 1px solid var(--gray-200);
-      padding: 0 var(--sp-6);
-      height: var(--header-h);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-8);
     }
-    .landing-header .logo {
+
+    .auth-logo {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: var(--sp-3);
-      text-decoration: none;
-      color: var(--gray-900);
+      margin-bottom: var(--sp-8);
     }
-    .landing-header .logo-icon {
-      width: 38px;
-      height: 38px;
+    .auth-logo .logo-icon {
+      width: 52px;
+      height: 52px;
       background: var(--primary-600);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 18px;
+      font-size: 26px;
       font-weight: 700;
+      margin-bottom: var(--sp-4);
     }
-    .landing-header .logo-text {
-      font-size: var(--text-lg);
+    .auth-logo .logo-title {
+      font-size: var(--text-xl);
       font-weight: 700;
-    }
-
-    .landing-body {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--sp-8) var(--sp-6);
-    }
-
-    .landing-content {
-      text-align: center;
-      max-width: 640px;
-    }
-    .landing-content h1 {
-      font-size: var(--text-3xl);
-      margin-bottom: var(--sp-3);
       color: var(--gray-900);
     }
-    .landing-content .subtitle {
-      font-size: var(--text-base);
+    .auth-logo .logo-subtitle {
+      font-size: var(--text-sm);
       color: var(--gray-500);
-      margin-bottom: var(--sp-10);
-      line-height: var(--lh-relaxed);
+      margin-top: var(--sp-1);
     }
 
-    .portal-cards {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--sp-6);
-      text-align: left;
-    }
-
-    .portal-card {
-      background: #fff;
-      border: 2px solid var(--gray-200);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-8) var(--sp-6);
-      text-decoration: none;
-      color: inherit;
-      transition: border-color var(--ease-fast), box-shadow var(--ease-fast);
-      display: flex;
-      flex-direction: column;
-    }
-    .portal-card:hover {
-      border-color: var(--primary-400);
-      box-shadow: var(--shadow-md);
-    }
-
-    .portal-card .card-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
+    .auth-form .form-group {
       margin-bottom: var(--sp-5);
     }
-    .portal-card.tenant .card-icon {
-      background: var(--success-50);
-    }
-    .portal-card.admin .card-icon {
-      background: var(--primary-50);
-    }
 
-    .portal-card h2 {
-      font-size: var(--text-lg);
-      margin-bottom: var(--sp-2);
+    .auth-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-6);
     }
-    .portal-card p {
-      font-size: var(--text-sm);
-      color: var(--gray-500);
-      flex: 1;
-    }
-    .portal-card .card-action {
-      display: inline-flex;
+    .auth-options label {
+      display: flex;
       align-items: center;
       gap: var(--sp-2);
-      margin-top: var(--sp-5);
       font-size: var(--text-sm);
-      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+    }
+    .auth-options label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary-600);
+      cursor: pointer;
+    }
+    .auth-options .forgot-link {
+      font-size: var(--text-sm);
       color: var(--primary-600);
+      text-decoration: none;
+    }
+    .auth-options .forgot-link:hover {
+      color: var(--primary-700);
+      text-decoration: underline;
     }
 
-    .landing-footer {
+    .auth-submit {
+      width: 100%;
+      padding: 12px;
+      font-size: var(--text-base);
+    }
+
+    .auth-divider {
       text-align: center;
-      padding: var(--sp-6);
+      margin: var(--sp-6) 0;
+      position: relative;
+    }
+    .auth-divider::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: var(--gray-200);
+    }
+    .auth-divider span {
+      background: #fff;
+      padding: 0 var(--sp-3);
+      position: relative;
       font-size: var(--text-xs);
       color: var(--gray-400);
-      border-top: 1px solid var(--gray-200);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    .ai-badge {
+    .auth-alt {
+      text-align: center;
+      font-size: var(--text-sm);
+      color: var(--gray-500);
+    }
+    .auth-alt a {
+      color: var(--primary-600);
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .auth-alt a:hover {
+      text-decoration: underline;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--sp-6);
+      font-size: var(--text-xs);
+      color: var(--gray-400);
+    }
+
+    .auth-error {
+      background: var(--danger-50);
+      border: 1px solid var(--danger-100);
+      color: var(--danger-600);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--sp-5);
+      display: none;
+    }
+    .auth-error.show { display: flex; align-items: center; gap: var(--sp-2); }
+
+    .auth-badge {
       display: inline-flex;
       align-items: center;
       gap: var(--sp-2);
-      padding: 6px 14px;
+      padding: 5px 12px;
       background: var(--primary-50);
       border: 1px solid var(--primary-200);
       border-radius: var(--radius-full);
       font-size: var(--text-xs);
       font-weight: 500;
       color: var(--primary-700);
-      margin-bottom: var(--sp-6);
+      margin-bottom: var(--sp-5);
     }
 
-    @media (max-width: 640px) {
-      .portal-cards { grid-template-columns: 1fr; }
-      .landing-content h1 { font-size: var(--text-2xl); }
+    @media (max-width: 480px) {
+      .auth-card {
+        padding: var(--sp-6);
+        border: none;
+        box-shadow: none;
+        background: transparent;
+      }
+      .auth-page { padding: var(--sp-4); }
     }
   </style>
 </head>
 <body>
-  <div class="landing">
-    <header class="landing-header">
-      <a href="index.html" class="logo">
+  <div class="auth-page">
+
+    <div class="auth-card">
+      <div class="auth-logo">
         <div class="logo-icon">N</div>
-        <div class="logo-text">Nepo Mall</div>
-      </a>
-    </header>
-
-    <main class="landing-body">
-      <div class="landing-content">
-        <div class="ai-badge">
-          🤖 Powered by BERT AI — Understands Taglish
-        </div>
-        <h1>Facility Issue Reporting System</h1>
-        <p class="subtitle">
-          Report maintenance concerns for Nepo Mall, Angeles City.
-          Our AI-powered system processes your reports in English, Filipino, or Taglish
-          and routes them to the right team instantly.
-        </p>
-
-        <div class="portal-cards">
-          <a href="tenant/index.html" class="portal-card tenant" id="tenant-portal-link">
-            <div class="card-icon">📝</div>
-            <h2>Report an Issue</h2>
-            <p>For commercial tenants — submit facility issues quickly using your phone or computer. Write in any language you're comfortable with.</p>
-            <span class="card-action">Submit a Report →</span>
-          </a>
-
-          <a href="admin/index.html" class="portal-card admin" id="admin-portal-link">
-            <div class="card-icon">📊</div>
-            <h2>PMO Dashboard</h2>
-            <p>For Property Management Office — view categorized issues, validate AI classifications, and access maintenance analytics.</p>
-            <span class="card-action">Open Dashboard →</span>
-          </a>
-        </div>
+        <div class="logo-title">Nepo Mall</div>
+        <div class="logo-subtitle">Facility Issue Reporting System</div>
       </div>
-    </main>
 
-    <footer class="landing-footer">
-      <p>© 2026 Nepo Mall Angeles City — Facility Issue Reporting System v1.0</p>
-      <p style="margin-top:4px;">Agile Development • BERT NLP • Human-in-the-Loop Architecture</p>
-    </footer>
+      <div class="auth-badge" style="justify-content:center;width:100%;margin-bottom:var(--sp-6);">
+        🤖 Powered by BERT AI — Understands Taglish
+      </div>
+
+      <div class="auth-error" id="authError">
+        <span>⚠</span>
+        <span id="authErrorText">Invalid email or password.</span>
+      </div>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email Address</label>
+          <input
+            type="email"
+            id="loginEmail"
+            class="form-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">Password</label>
+          <input
+            type="password"
+            id="loginPassword"
+            class="form-input"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+
+        <div class="auth-options">
+          <label>
+            <input type="checkbox" id="rememberMe">
+            Remember me
+          </label>
+          <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-primary auth-submit" id="signInBtn">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <div class="auth-alt">
+        Are you a new tenant? <a href="register.html">Register your store here.</a>
+      </div>
+    </div>
+
+    <div class="auth-footer">
+      © 2026 Nepo Mall Angeles City — FIRS v1.0<br>
+      Agile Development • BERT NLP • Human-in-the-Loop
+    </div>
   </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
+    const authError = document.getElementById('authError');
+    const authErrorText = document.getElementById('authErrorText');
+    const signInBtn = document.getElementById('signInBtn');
+    const forgotLink = document.getElementById('forgotLink');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // Reset error
+      authError.classList.remove('show');
+
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
+
+      // Basic validation
+      if (!email) {
+        showError('Please enter your email address.');
+        emailInput.focus();
+        return;
+      }
+      if (!isValidEmail(email)) {
+        showError('Please enter a valid email address.');
+        emailInput.focus();
+        return;
+      }
+      if (!password) {
+        showError('Please enter your password.');
+        passwordInput.focus();
+        return;
+      }
+      if (password.length < 4) {
+        showError('Password must be at least 4 characters.');
+        passwordInput.focus();
+        return;
+      }
+
+      // Simulate sign-in processing
+      signInBtn.disabled = true;
+      signInBtn.textContent = 'Signing in...';
+
+      setTimeout(function() {
+        // Store logged-in user info
+        const isPMO = email.endsWith('@nepomall-pmo.com') || email.endsWith('@nepomall.com');
+
+        if (isPMO) {
+          // Admin / PMO user
+          sessionStorage.setItem('firs_user', JSON.stringify({
+            email: email,
+            role: 'admin',
+            name: 'PMO Admin',
+            loggedInAt: new Date().toISOString()
+          }));
+          window.location.href = 'admin/index.html';
+        } else {
+          // Tenant user — look up registration data for richer session
+          var sessionData = {
+            email: email,
+            role: 'tenant',
+            name: email.split('@')[0],
+            storeName: '',
+            tenantId: null,
+            contact: '',
+            phone: '',
+            loggedInAt: new Date().toISOString()
+          };
+
+          // Check registered tenants first
+          var registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+          var regMatch = registered.find(function(t) { return t.email && t.email.toLowerCase() === email; });
+          if (regMatch) {
+            sessionData.tenantId = regMatch.id;
+            sessionData.storeName = regMatch.name || '';
+            sessionData.name = regMatch.name || regMatch.contact || email.split('@')[0];
+            sessionData.contact = regMatch.contact || '';
+            sessionData.phone = regMatch.phone || '';
+          }
+
+          sessionStorage.setItem('firs_user', JSON.stringify(sessionData));
+          window.location.href = 'tenant/home.html';
+        }
+      }, 800);
+    });
+
+    forgotLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      if (email && isValidEmail(email)) {
+        authError.classList.remove('show');
+        alert('A password reset link has been sent to ' + email + '.\n\n(This is a simulated action.)');
+      } else {
+        showError('Enter your email above, then click "Forgot password?"');
+      }
+    });
+
+    function showError(msg) {
+      authErrorText.textContent = msg;
+      authError.classList.add('show');
+    }
+
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Check if user is already logged in
+    (function checkSession() {
+      const user = sessionStorage.getItem('firs_user');
+      if (user) {
+        try {
+          const parsed = JSON.parse(user);
+          if (parsed.role === 'admin') {
+            window.location.href = 'admin/index.html';
+          } else {
+            window.location.href = 'tenant/home.html';
+          }
+        } catch(e) { /* ignore */ }
+      }
+    })();
+  </script>
 </body>
 </html>
