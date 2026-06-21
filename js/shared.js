@@ -6,7 +6,7 @@ import { SAMPLE_ISSUES } from './mock-data.js';
 
 /* ---------- LocalStorage Persistence ---------- */
 
-const STORAGE_KEY = 'nepomall_issues';
+const STORAGE_KEY = 'nepomall_issues_v2';
 
 export function loadIssues() {
   try {
