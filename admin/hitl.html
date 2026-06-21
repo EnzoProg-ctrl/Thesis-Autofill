@@ -142,7 +142,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <a href="../index.html" onclick="sessionStorage.removeItem('firs_user')">
+        <a href="#" onclick="event.preventDefault(); sessionStorage.removeItem('firs_user'); window.location.replace('../index.html');">
           <span>🚪</span> Sign Out
         </a>
       </div>

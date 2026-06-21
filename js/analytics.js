@@ -2,8 +2,14 @@
    Analytics Dashboard — Charts, KPIs, Time-Range Filtering
    ============================================================ */
 
+import { checkAuth } from './auth-guard.js';
 import { HISTORICAL_DATA, CATEGORIES, STATUS_LIST, getCategoryLabel } from './mock-data.js';
 import { loadIssues, showToast } from './shared.js';
+
+/* ---------- Auth Guard ---------- */
+if (!checkAuth('admin')) {
+  throw new Error('Not authenticated');
+}
 
 /* ---------- Chart.js Global Defaults ---------- */
 Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";

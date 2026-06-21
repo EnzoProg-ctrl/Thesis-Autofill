@@ -2,8 +2,16 @@
    Admin Dashboard — KPIs, Kanban, Table, Slide-Over, Filters
    ============================================================ */
 
+import { checkAuth } from './auth-guard.js';
 import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast, showSlideOver, closeSlideOver, escapeHtml } from './shared.js';
 import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, STAFF, getTenantById, getCategoryLabel, getCategoryIcon, getStaffById, getStatusInfo, getPriorityInfo } from './mock-data.js';
+
+/* ---------- Auth Guard ---------- */
+// Redirect to login if not authenticated as admin.
+// Uses replace() so the protected page is removed from browser history.
+if (!checkAuth('admin')) {
+  throw new Error('Not authenticated');
+}
 
 /* ---------- State ---------- */
 
@@ -16,7 +24,7 @@ let refreshTimer = null;
 
 /* ---------- Status column ordering ---------- */
 
-const STATUS_COLUMNS = ['new', 'ai_processing', 'awaiting_review', 'in_progress', 'resolved'];
+const STATUS_COLUMNS = ['awaiting_review', 'in_progress', 'resolved'];
 
 /* ---------- Bootstrap ---------- */
 
@@ -185,6 +193,9 @@ function renderKanban() {
     body.addEventListener('dragleave', handleDragLeave);
     body.addEventListener('drop', handleDrop);
 
+    // Sort by aiPriority descending (highest priority first)
+    colIssues.sort((a, b) => (b.aiPriority || 0) - (a.aiPriority || 0));
+
     if (colIssues.length === 0) {
       body.innerHTML = `<div class="empty-state" style="padding: var(--sp-6) var(--sp-2);"><div class="empty-state-text">No issues</div></div>`;
     } else {
@@ -206,6 +217,8 @@ function createKanbanCard(issue) {
   card.draggable = true;
   card.dataset.issueId = issue.id;
 
+  const tenantDisplay = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || 'Unknown');
+
   card.innerHTML = `
     <div class="kanban-card-header">
       <span class="kanban-card-id">${escapeHtml(issue.id)}</span>
@@ -213,7 +226,7 @@ function createKanbanCard(issue) {
     </div>
     <div class="kanban-card-title">${escapeHtml(issue.text)}</div>
     <div class="kanban-card-meta">
-      <span>${tenant ? escapeHtml(tenant.name) : 'Unknown'}</span>
+      <span>${tenantDisplay}</span>
       <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span>
       <span>${formatRelativeTime(issue.submittedAt)}</span>
     </div>
@@ -297,15 +310,15 @@ function renderTable() {
   const tbody = document.getElementById('table-body');
   const filtered = getFilteredIssues();
 
-  // Sort
+  // Sort — default secondary sort by aiPriority descending
   const sorted = [...filtered].sort((a, b) => {
     let aVal, bVal;
     switch (sortColumn) {
       case 'id':
         aVal = a.id; bVal = b.id; break;
       case 'tenant':
-        aVal = (getTenantById(a.tenantId)?.name || '').toLowerCase();
-        bVal = (getTenantById(b.tenantId)?.name || '').toLowerCase();
+        aVal = (getTenantById(a.tenantId)?.name || a.storeName || '').toLowerCase();
+        bVal = (getTenantById(b.tenantId)?.name || b.storeName || '').toLowerCase();
         break;
       case 'category':
         aVal = getCategoryLabel(a.aiCategory).toLowerCase();
@@ -330,7 +343,8 @@ function renderTable() {
     }
     if (aVal < bVal) return sortAsc ? -1 : 1;
     if (aVal > bVal) return sortAsc ? 1 : -1;
-    return 0;
+    // Tiebreaker: sort by aiPriority descending
+    return (b.aiPriority || 0) - (a.aiPriority || 0);
   });
 
   tbody.innerHTML = '';
@@ -342,6 +356,7 @@ function renderTable() {
 
   sorted.forEach(issue => {
     const tenant = getTenantById(issue.tenantId);
+    const tenantDisplay = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || '—');
     const priorityInfo = getPriorityInfo(issue.aiPriorityLevel);
     const statusInfo = getStatusInfo(issue.status);
     const staff = issue.assignedTo ? getStaffById(issue.assignedTo) : null;
@@ -350,7 +365,7 @@ function renderTable() {
     tr.className = 'clickable';
     tr.innerHTML = `
       <td><span class="font-semibold">${escapeHtml(issue.id)}</span></td>
-      <td>${tenant ? escapeHtml(tenant.name) : '—'}</td>
+      <td>${tenantDisplay}</td>
       <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span></td>
       <td>
         <div class="flex items-center gap-2">
@@ -414,7 +429,12 @@ function openIssueDetail(issueId) {
         <span class="status-badge" style="color:${statusInfo.color}">${escapeHtml(statusInfo.label)}</span>
         ${issue.validated ? '<span class="badge badge-success">✓ Validated</span>' : '<span class="badge badge-warning">Pending Review</span>'}
       </div>
-      ${tenant ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(tenant.name)} • ${tenant.floor} Zone ${tenant.zone}</div>` : ''}
+      ${tenant
+        ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(tenant.name)} • ${tenant.floor}${tenant.zone ? ' Zone ' + tenant.zone : ''}</div>`
+        : (issue.storeName
+          ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(issue.storeName)}${issue.contactPerson ? ' • ' + escapeHtml(issue.contactPerson) : ''}${issue.phoneNumber ? ' • ' + escapeHtml(issue.phoneNumber) : ''}</div>`
+          : '')
+      }
     </div>
 
     <!-- Original Text -->

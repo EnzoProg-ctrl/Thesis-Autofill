@@ -1,107 +1,455 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Sign in to the Nepo Mall Facility Issue Reporting System. Report maintenance issues or access the PMO dashboard.">
+  <meta name="description"
+    content="Sign in to the Nepo Mall Facility Issue Reporting System. Report maintenance issues or access the PMO dashboard.">
   <title>Sign In — Nepo Mall FIRS</title>
   <link rel="stylesheet" href="css/design-system.css">
   <link rel="stylesheet" href="css/components.css">
   <style>
+    /* ── Split-screen Layout ── */
     .auth-page {
       min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #0b1120;
+    }
+
+    /* ── Left: Hero Panel ── */
+    .auth-hero {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px;
+      overflow: hidden;
+    }
+
+    .auth-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('img/mall-hero.png') center / cover no-repeat;
+      z-index: 0;
+    }
+
+    .auth-hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg,
+          rgba(11, 17, 32, 0.3) 0%,
+          rgba(11, 17, 32, 0.55) 40%,
+          rgba(11, 17, 32, 0.88) 100%);
+      z-index: 1;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-tagline {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #ffffff;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-tagline span {
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.6);
+      line-height: 1.6;
+      max-width: 440px;
+      margin-bottom: 32px;
+    }
+
+    /* Glass stat cards row */
+    .hero-stats {
+      display: flex;
+      gap: 12px;
+    }
+
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      transition: background var(--ease-base), transform var(--ease-base);
+    }
+
+    .stat-chip:hover {
+      background: rgba(255, 255, 255, 0.14);
+      transform: translateY(-2px);
+    }
+
+    .stat-chip-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .stat-chip-icon.blue {
+      background: rgba(96, 165, 250, 0.2);
+    }
+
+    .stat-chip-icon.green {
+      background: rgba(34, 197, 94, 0.2);
+    }
+
+    .stat-chip-icon.purple {
+      background: rgba(167, 139, 250, 0.2);
+    }
+
+    .stat-chip-label {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 0.03em;
+    }
+
+    .stat-chip-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 1px;
+    }
+
+    /* ── Right: Form Panel ── */
+    .auth-form-panel {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: var(--sp-6);
-      background: var(--gray-50);
+      padding: 48px 56px;
+      background: #ffffff;
+      position: relative;
+      overflow-y: auto;
     }
 
     .auth-card {
       width: 100%;
-      max-width: 420px;
-      background: #fff;
-      border: 1px solid var(--gray-200);
-      border-radius: var(--radius-lg);
-      padding: var(--sp-8);
+      max-width: 400px;
     }
 
+    /* Logo / Brand Block */
     .auth-logo {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      margin-bottom: var(--sp-8);
+      gap: 14px;
+      margin-bottom: 8px;
     }
-    .auth-logo .logo-icon {
-      width: 52px;
-      height: 52px;
-      background: var(--primary-600);
-      border-radius: var(--radius-lg);
+
+    .logo-icon {
+      width: 46px;
+      height: 46px;
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      font-size: 26px;
-      font-weight: 700;
-      margin-bottom: var(--sp-4);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
     }
-    .auth-logo .logo-title {
-      font-size: var(--text-xl);
+
+    .logo-text-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-title {
+      font-size: 1.2rem;
       font-weight: 700;
       color: var(--gray-900);
+      line-height: 1.2;
+      letter-spacing: -0.01em;
     }
-    .auth-logo .logo-subtitle {
-      font-size: var(--text-sm);
+
+    .logo-subtitle {
+      font-size: 0.78rem;
+      color: var(--gray-400);
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    /* Welcome text */
+    .auth-heading {
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin: 28px 0 6px;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .auth-description {
+      font-size: 0.9rem;
       color: var(--gray-500);
-      margin-top: var(--sp-1);
+      margin-bottom: 28px;
+      line-height: 1.5;
     }
 
+    /* AI Badge — sleek pill */
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.07) 0%, rgba(124, 58, 237, 0.07) 100%);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      border-radius: 100px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #4f46e5;
+      letter-spacing: 0.02em;
+      margin-bottom: 28px;
+      transition: all var(--ease-base);
+    }
+
+    .ai-badge:hover {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(124, 58, 237, 0.12) 100%);
+      border-color: rgba(37, 99, 235, 0.25);
+    }
+
+    .ai-badge-dot {
+      width: 7px;
+      height: 7px;
+      background: #4f46e5;
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+    }
+
+    /* Error */
+    .auth-error {
+      background: var(--danger-50);
+      border: 1px solid var(--danger-100);
+      color: var(--danger-600);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      margin-bottom: 20px;
+      display: none;
+      font-weight: 500;
+    }
+
+    .auth-error.show {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: shake 0.3s ease;
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-4px);
+      }
+
+      50% {
+        transform: translateX(4px);
+      }
+
+      75% {
+        transform: translateX(-4px);
+      }
+    }
+
+    /* Form Elements */
     .auth-form .form-group {
-      margin-bottom: var(--sp-5);
+      margin-bottom: 20px;
     }
 
+    .auth-form .form-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+
+    .auth-form .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 0.9rem;
+      color: var(--gray-800);
+      background: var(--gray-50);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      outline: none;
+      transition: all var(--ease-base);
+    }
+
+    .auth-form .form-input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .auth-form .form-input:focus {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    /* Password input wrapper */
+    .password-wrapper {
+      position: relative;
+    }
+
+    .password-wrapper .form-input {
+      padding-right: 42px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--gray-500);
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color var(--ease-fast);
+    }
+
+    .password-toggle:hover {
+      color: var(--gray-700);
+    }
+
+    /* Options row */
     .auth-options {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: var(--sp-6);
+      margin-bottom: 24px;
     }
+
     .auth-options label {
       display: flex;
       align-items: center;
-      gap: var(--sp-2);
-      font-size: var(--text-sm);
+      gap: 7px;
+      font-size: 0.82rem;
       color: var(--gray-600);
       cursor: pointer;
+      user-select: none;
     }
+
     .auth-options label input[type="checkbox"] {
       width: 16px;
       height: 16px;
-      accent-color: var(--primary-600);
+      accent-color: #2563eb;
       cursor: pointer;
+      border-radius: 4px;
     }
-    .auth-options .forgot-link {
-      font-size: var(--text-sm);
-      color: var(--primary-600);
+
+    .forgot-link {
+      font-size: 0.82rem;
+      color: #2563eb;
+      font-weight: 500;
       text-decoration: none;
+      transition: color var(--ease-fast);
     }
-    .auth-options .forgot-link:hover {
-      color: var(--primary-700);
+
+    .forgot-link:hover {
+      color: #1d4ed8;
       text-decoration: underline;
     }
 
+    /* Submit Button */
     .auth-submit {
       width: 100%;
-      padding: 12px;
-      font-size: var(--text-base);
+      padding: 13px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all var(--ease-base);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+      letter-spacing: 0.01em;
+      position: relative;
+      overflow: hidden;
     }
 
+    .auth-submit::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .auth-submit:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    }
+
+    .auth-submit:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .auth-submit:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    /* Divider */
     .auth-divider {
       text-align: center;
-      margin: var(--sp-6) 0;
+      margin: 24px 0;
       position: relative;
     }
+
     .auth-divider::before {
       content: '';
       position: absolute;
@@ -111,142 +459,190 @@
       height: 1px;
       background: var(--gray-200);
     }
+
     .auth-divider span {
-      background: #fff;
-      padding: 0 var(--sp-3);
+      background: #ffffff;
+      padding: 0 12px;
       position: relative;
-      font-size: var(--text-xs);
+      font-size: 0.72rem;
       color: var(--gray-400);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
+      font-weight: 600;
     }
 
+    /* Register alt */
     .auth-alt {
       text-align: center;
-      font-size: var(--text-sm);
+      font-size: 0.85rem;
       color: var(--gray-500);
     }
+
     .auth-alt a {
-      color: var(--primary-600);
-      font-weight: 500;
+      color: #2563eb;
+      font-weight: 600;
       text-decoration: none;
+      transition: color var(--ease-fast);
     }
+
     .auth-alt a:hover {
+      color: #1d4ed8;
       text-decoration: underline;
     }
 
+    /* Footer */
     .auth-footer {
       text-align: center;
-      margin-top: var(--sp-6);
-      font-size: var(--text-xs);
+      margin-top: 32px;
+      font-size: 0.72rem;
       color: var(--gray-400);
+      line-height: 1.6;
     }
 
-    .auth-error {
-      background: var(--danger-50);
-      border: 1px solid var(--danger-100);
-      color: var(--danger-600);
-      border-radius: var(--radius-md);
-      padding: var(--sp-3) var(--sp-4);
-      font-size: var(--text-sm);
-      margin-bottom: var(--sp-5);
-      display: none;
-    }
-    .auth-error.show { display: flex; align-items: center; gap: var(--sp-2); }
+    /* ── Responsive ── */
+    @media (max-width: 960px) {
+      .auth-page {
+        grid-template-columns: 1fr;
+      }
 
-    .auth-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--sp-2);
-      padding: 5px 12px;
-      background: var(--primary-50);
-      border: 1px solid var(--primary-200);
-      border-radius: var(--radius-full);
-      font-size: var(--text-xs);
-      font-weight: 500;
-      color: var(--primary-700);
-      margin-bottom: var(--sp-5);
+      .auth-hero {
+        display: none;
+      }
+
+      .auth-form-panel {
+        min-height: 100vh;
+        padding: 40px 32px;
+        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      }
     }
 
     @media (max-width: 480px) {
-      .auth-card {
-        padding: var(--sp-6);
-        border: none;
-        box-shadow: none;
-        background: transparent;
+      .auth-form-panel {
+        padding: 32px 20px;
       }
-      .auth-page { padding: var(--sp-4); }
+
+      .auth-heading {
+        font-size: 1.4rem;
+      }
+    }
+
+    /* ── Subtle page load animation ── */
+    .auth-card {
+      animation: fadeSlideUp 0.5s ease-out both;
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero-content {
+      animation: fadeSlideUp 0.6s ease-out 0.2s both;
     }
   </style>
 </head>
+
 <body>
   <div class="auth-page">
 
-    <div class="auth-card">
-      <div class="auth-logo">
-        <div class="logo-icon">N</div>
-        <div class="logo-title">Nepo Mall</div>
-        <div class="logo-subtitle">Facility Issue Reporting System</div>
-      </div>
-
-      <div class="auth-badge" style="justify-content:center;width:100%;margin-bottom:var(--sp-6);">
-        🤖 Powered by BERT AI — Understands Taglish
-      </div>
-
-      <div class="auth-error" id="authError">
-        <span>⚠</span>
-        <span id="authErrorText">Invalid email or password.</span>
-      </div>
-
-      <form id="loginForm" class="auth-form" novalidate>
-        <div class="form-group">
-          <label class="form-label" for="loginEmail">Email Address</label>
-          <input
-            type="email"
-            id="loginEmail"
-            class="form-input"
-            placeholder="you@example.com"
-            autocomplete="email"
-            required
-          >
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="loginPassword">Password</label>
-          <input
-            type="password"
-            id="loginPassword"
-            class="form-input"
-            placeholder="Enter your password"
-            autocomplete="current-password"
-            required
-          >
-        </div>
-
-        <div class="auth-options">
-          <label>
-            <input type="checkbox" id="rememberMe">
-            Remember me
-          </label>
-          <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
-        </div>
-
-        <button type="submit" class="btn btn-primary auth-submit" id="signInBtn">
-          Sign In
-        </button>
-      </form>
-
-      <div class="auth-divider"><span>or</span></div>
-
-      <div class="auth-alt">
-        Are you a new tenant? <a href="register.html">Register your store here.</a>
+    <!-- ── Left: Hero Panel ── -->
+    <div class="auth-hero">
+      <div class="hero-content">
+        <h1 class="hero-tagline">
+          Report Issues.<br><span>Resolve Faster.</span>
+        </h1>
+        <p class="hero-subtitle">
+          The AI-powered facility reporting system for Nepo Mall Angeles City. Submit, track, and resolve maintenance
+          issues in real time.
+        </p>
       </div>
     </div>
 
-    <div class="auth-footer">
-      © 2026 Nepo Mall Angeles City — FIRS v1.0<br>
-      Agile Development • BERT NLP • Human-in-the-Loop
+    <!-- ── Right: Form Panel ── -->
+    <div class="auth-form-panel">
+      <div class="auth-card">
+
+        <!-- Brand -->
+        <div class="auth-logo">
+          <div class="logo-icon">N</div>
+          <div class="logo-text-group">
+            <div class="logo-title">Nepo Mall</div>
+            <div class="logo-subtitle">Facility Issue Reporting System</div>
+          </div>
+        </div>
+
+        <!-- Heading -->
+        <h2 class="auth-heading">Welcome back</h2>
+        <p class="auth-description">Sign in to manage facility reports or submit a new issue.</p>
+
+        <!-- AI Badge -->
+        <div class="ai-badge">
+          <span class="ai-badge-dot"></span>
+          Powered by BERT AI — Understands Taglish
+        </div>
+
+        <!-- Error -->
+        <div class="auth-error" id="authError">
+          <span>⚠</span>
+          <span id="authErrorText">Invalid email or password.</span>
+        </div>
+
+        <!-- Form -->
+        <form id="loginForm" class="auth-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" autocomplete="email"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password</label>
+            <div class="password-wrapper">
+              <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password"
+                autocomplete="current-password" required>
+              <button type="button" class="password-toggle" id="togglePassword" aria-label="Show password">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth-options">
+            <label>
+              <input type="checkbox" id="rememberMe">
+              Remember me
+            </label>
+            <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="auth-submit" id="signInBtn">
+            Sign In
+          </button>
+        </form>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <div class="auth-alt">
+          Are you a new tenant? <a href="register.html">Register your store here.</a>
+        </div>
+
+        <div class="auth-footer">
+          © 2026 Nepo Mall Angeles City — FIRS v1.0<br>
+          Agile Development • BERT NLP • Human-in-the-Loop
+        </div>
+      </div>
     </div>
+
   </div>
 
   <script>
@@ -257,8 +653,19 @@
     const authErrorText = document.getElementById('authErrorText');
     const signInBtn = document.getElementById('signInBtn');
     const forgotLink = document.getElementById('forgotLink');
+    const togglePasswordBtn = document.getElementById('togglePassword');
 
-    form.addEventListener('submit', function(e) {
+    // Show/Hide password toggle
+    togglePasswordBtn.addEventListener('click', function () {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      this.innerHTML = isPassword
+        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+      this.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+    });
+
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
 
       // Reset error
@@ -283,22 +690,16 @@
         passwordInput.focus();
         return;
       }
-      if (password.length < 4) {
-        showError('Password must be at least 4 characters.');
-        passwordInput.focus();
-        return;
-      }
 
       // Simulate sign-in processing
       signInBtn.disabled = true;
       signInBtn.textContent = 'Signing in...';
 
-      setTimeout(function() {
-        // Store logged-in user info
-        const isPMO = email.endsWith('@nepomall-pmo.com') || email.endsWith('@nepomall.com');
+      setTimeout(function () {
+        // ── Strict Authentication ──
 
-        if (isPMO) {
-          // Admin / PMO user
+        // 1. Hardcoded Admin account
+        if (email === 'admin@gmail.com' && password === 'admin123') {
           sessionStorage.setItem('firs_user', JSON.stringify({
             email: email,
             role: 'admin',
@@ -306,37 +707,63 @@
             loggedInAt: new Date().toISOString()
           }));
           window.location.href = 'admin/index.html';
-        } else {
-          // Tenant user — look up registration data for richer session
+          return;
+        }
+
+        // 2. Registered Tenant — lookup by email in localStorage
+        var rawData = localStorage.getItem('firs_registered_tenants');
+        var registered = [];
+        try {
+          registered = JSON.parse(rawData || '[]');
+        } catch (e) {
+          console.error('Failed to parse firs_registered_tenants:', e);
+          registered = [];
+        }
+
+        var regMatch = null;
+        for (var i = 0; i < registered.length; i++) {
+          var t = registered[i];
+          if (t.email && t.email.toLowerCase().trim() === email) {
+            regMatch = t;
+            break;
+          }
+        }
+
+        if (regMatch) {
+          // Verify password
+          if (regMatch.password !== password) {
+            signInBtn.disabled = false;
+            signInBtn.textContent = 'Sign In';
+            showError('Invalid email or password.');
+            return;
+          }
+
+          // Password matches — build session
           var sessionData = {
             email: email,
             role: 'tenant',
-            name: email.split('@')[0],
-            storeName: '',
-            tenantId: null,
-            contact: '',
-            phone: '',
+            tenantId: regMatch.id,
+            storeName: regMatch.name || email.split('@')[0],
+            name: regMatch.name || regMatch.contact || email.split('@')[0],
+            contact: regMatch.contact || email.split('@')[0],
+            phone: regMatch.phone || '',
             loggedInAt: new Date().toISOString()
           };
 
-          // Check registered tenants first
-          var registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-          var regMatch = registered.find(function(t) { return t.email && t.email.toLowerCase() === email; });
-          if (regMatch) {
-            sessionData.tenantId = regMatch.id;
-            sessionData.storeName = regMatch.name || '';
-            sessionData.name = regMatch.name || regMatch.contact || email.split('@')[0];
-            sessionData.contact = regMatch.contact || '';
-            sessionData.phone = regMatch.phone || '';
-          }
-
           sessionStorage.setItem('firs_user', JSON.stringify(sessionData));
           window.location.href = 'tenant/home.html';
+          return;
         }
+
+        // 3. No match found — reject
+        signInBtn.disabled = false;
+        signInBtn.textContent = 'Sign In';
+        showError('Invalid email or password.');
+
       }, 800);
     });
 
-    forgotLink.addEventListener('click', function(e) {
+    forgotLink.addEventListener('click', function (e) {
       e.preventDefault();
       const email = emailInput.value.trim();
       if (email && isValidEmail(email)) {
@@ -367,9 +794,10 @@
           } else {
             window.location.href = 'tenant/home.html';
           }
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
       }
     })();
   </script>
 </body>
+
 </html>

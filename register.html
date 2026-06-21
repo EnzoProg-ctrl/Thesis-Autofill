@@ -163,6 +163,35 @@
       width: 0%;
     }
 
+    /* Password toggle */
+    .password-wrapper {
+      position: relative;
+    }
+
+    .password-wrapper .form-input {
+      padding-right: 42px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--gray-500);
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 150ms ease;
+    }
+
+    .password-toggle:hover {
+      color: var(--gray-700);
+    }
+
     @media (max-width: 540px) {
       .form-row { grid-template-columns: 1fr; }
       .auth-card { padding: var(--sp-6); }
@@ -202,27 +231,14 @@
           <input type="text" id="storeName" class="form-input" placeholder="e.g., Jollibee, Mercury Drug" required>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="storeFloor">Store Location (Floor) <span class="required">*</span></label>
-            <select id="storeFloor" class="form-select" required>
-              <option value="">— Select Floor —</option>
-              <option value="GF">GF — Ground Floor</option>
-              <option value="2F">2F — Second Floor</option>
-              <option value="3F">3F — Third Floor</option>
-              <option value="4F">4F — Fourth Floor</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="storeZone">Zone</label>
-            <select id="storeZone" class="form-select">
-              <option value="">— Select Zone —</option>
-              <option value="A">Zone A</option>
-              <option value="B">Zone B</option>
-              <option value="C">Zone C</option>
-              <option value="D">Zone D</option>
-            </select>
-          </div>
+        <div class="form-group">
+          <label class="form-label" for="storeFloor">Store Location (Floor) <span class="required">*</span></label>
+          <select id="storeFloor" class="form-select" required>
+            <option value="" disabled selected>— Select Floor —</option>
+            <option value="1F">1F — First Floor</option>
+            <option value="2F">2F — Second Floor</option>
+            <option value="3F">3F — Third Floor</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -245,14 +261,30 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="regPassword">Password <span class="required">*</span></label>
-            <input type="password" id="regPassword" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password" required>
+            <div class="password-wrapper">
+              <input type="password" id="regPassword" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password" required>
+              <button type="button" class="password-toggle" data-target="regPassword" aria-label="Show password">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
             <div class="password-strength">
               <div class="password-strength-fill" id="passwordStrengthFill"></div>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="regConfirm">Confirm Password <span class="required">*</span></label>
-            <input type="password" id="regConfirm" class="form-input" placeholder="Re-type password" autocomplete="new-password" required>
+            <div class="password-wrapper">
+              <input type="password" id="regConfirm" class="form-input" placeholder="Re-type password" autocomplete="new-password" required>
+              <button type="button" class="password-toggle" data-target="regConfirm" aria-label="Show password">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -307,7 +339,6 @@
 
       const storeName = document.getElementById('storeName').value.trim();
       const floor = document.getElementById('storeFloor').value;
-      const zone = document.getElementById('storeZone').value;
       const contact = document.getElementById('contactPerson').value.trim();
       const phone = document.getElementById('phoneNumber').value.trim();
       const email = document.getElementById('regEmail').value.trim().toLowerCase();
@@ -329,29 +360,43 @@
         return showError('PMO accounts cannot be registered here. Contact administration.');
       }
 
+      // Check for duplicate email among existing registered tenants
+      const existingTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+      const duplicateEmail = existingTenants.find(function(t) {
+        return t.email && t.email.toLowerCase() === email;
+      });
+      if (duplicateEmail) {
+        return showError('An account with this email already exists. Please sign in instead.');
+      }
+
+      // Check if email matches the hardcoded admin account
+      if (email === 'admin@gmail.com') {
+        return showError('This email is reserved. Please use a different email.');
+      }
+
       // Simulate registration
       registerBtn.disabled = true;
       registerBtn.textContent = 'Creating account...';
 
       setTimeout(function() {
-        // Generate tenant ID
-        const existingTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-        const tenantId = 'T' + String(51 + existingTenants.length).padStart(3, '0');
+        // Re-read to avoid race conditions (another tab might have registered)
+        const currentTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+        const tenantId = 'T' + String(51 + currentTenants.length).padStart(3, '0');
 
         const newTenant = {
           id: tenantId,
           name: storeName,
           floor: floor,
-          zone: zone || 'A',
           contact: contact,
           phone: phone,
           email: email,
+          password: password,
           type: 'Registered Store',
           registeredAt: new Date().toISOString()
         };
 
-        existingTenants.push(newTenant);
-        localStorage.setItem('firs_registered_tenants', JSON.stringify(existingTenants));
+        currentTenants.push(newTenant);
+        localStorage.setItem('firs_registered_tenants', JSON.stringify(currentTenants));
 
         // Show success
         form.style.display = 'none';
@@ -366,6 +411,21 @@
       authError.classList.add('show');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // Password show/hide toggles
+    document.querySelectorAll('.password-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const targetId = this.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        if (!input) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        this.innerHTML = isPassword
+          ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+          : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+        this.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+      });
+    });
   </script>
 </body>
 </html>

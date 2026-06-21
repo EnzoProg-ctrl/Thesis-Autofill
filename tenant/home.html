@@ -312,8 +312,14 @@
   </main>
 
   <script type="module">
+    import { checkAuth } from '../js/auth-guard.js';
     import { TENANTS, CATEGORIES, STATUS_LIST, getTenantById, getCategoryLabel } from '../js/mock-data.js';
     import { loadIssues, formatDate, formatRelativeTime } from '../js/shared.js';
+
+    // ===== Auth Guard =====
+    if (!checkAuth('tenant')) {
+      throw new Error('Not authenticated');
+    }
 
     // ===== Session Check =====
     const sessionUser = sessionStorage.getItem('firs_user');
@@ -324,7 +330,9 @@
     }
 
     if (!currentUser || currentUser.role !== 'tenant') {
-      currentUser = currentUser || { email: 'demo@store.com', name: 'Demo Store', role: 'tenant' };
+      // Auth guard above should have already redirected, but just in case
+      window.location.replace('../index.html');
+      throw new Error('Not authenticated');
     }
 
     // ===== Populate User Info =====
@@ -354,7 +362,7 @@
     // ===== Logout =====
     document.getElementById('logoutBtn').addEventListener('click', () => {
       sessionStorage.removeItem('firs_user');
-      window.location.href = '../index.html';
+      window.location.replace('../index.html');
     });
 
     // ===== Resolve Tenant ID =====

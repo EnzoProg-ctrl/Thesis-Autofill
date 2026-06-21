@@ -2,9 +2,15 @@
    Tenant Portal — Report Form Logic (Refactored)
    ============================================================ */
 
+import { checkAuth } from './auth-guard.js';
 import { TENANTS, CATEGORIES, getCategoryLabel, getCategoryIcon } from './mock-data.js';
 import { loadIssues, addIssue, generateId, showModal, closeModal, showToast, escapeHtml } from './shared.js';
 import { analyzeText } from './mock-bert.js';
+
+/* ---------- Auth Guard ---------- */
+if (!checkAuth('tenant')) {
+  throw new Error('Not authenticated');
+}
 
 /* ---------- DOM References ---------- */
 const storeNameInput      = document.getElementById('storeName');
@@ -407,6 +413,7 @@ reportForm.addEventListener('submit', async (e) => {
 
     footer.querySelector('#modalCloseBtn').addEventListener('click', () => {
       closeModal();
+      window.location.href = 'home.html';
     });
 
     footer.querySelector('#submitAnotherBtn').addEventListener('click', () => {
@@ -416,7 +423,10 @@ reportForm.addEventListener('submit', async (e) => {
 
     // Allow closing overlay again
     overlay.addEventListener('click', (ev) => {
-      if (ev.target === overlay) closeModal();
+      if (ev.target === overlay) {
+        closeModal();
+        window.location.href = 'home.html';
+      }
     });
 
     showToast('Issue report submitted successfully!', 'success');

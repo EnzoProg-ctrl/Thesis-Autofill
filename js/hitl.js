@@ -2,8 +2,14 @@
    HITL (Human-in-the-Loop) Validation — JS Module
    ============================================================ */
 
+import { checkAuth } from './auth-guard.js';
 import { loadIssues, updateIssue, showToast, formatRelativeTime, escapeHtml } from './shared.js';
 import { CATEGORIES, TENANTS, getTenantById, getCategoryLabel, getCategoryIcon, getPriorityInfo } from './mock-data.js';
+
+/* ---------- Auth Guard ---------- */
+if (!checkAuth('admin')) {
+  throw new Error('Not authenticated');
+}
 
 /* ---------- State ---------- */
 let allIssues = [];
@@ -54,9 +60,11 @@ function renderCards() {
 
   reviewContainer.innerHTML = unvalidated.map((issue, idx) => {
     const tenant = getTenantById(issue.tenantId);
-    const tenantName    = tenant ? escapeHtml(tenant.name) : 'Unknown Tenant';
+    const tenantName    = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || 'Unknown Tenant');
     const tenantFloor   = tenant ? tenant.floor : '—';
-    const tenantZone    = tenant ? tenant.zone : '—';
+    const tenantZone    = tenant ? tenant.zone : '';
+    const tenantContact = tenant ? (tenant.contact || '') : (issue.contactPerson || '');
+    const tenantPhone   = tenant ? (tenant.phone || '') : (issue.phoneNumber || '');
     const submittedAgo  = formatRelativeTime(issue.submittedAt);
 
     const aiCatLabel  = getCategoryLabel(issue.aiCategory);
@@ -82,6 +90,17 @@ function renderCards() {
       return `<button type="button" class="priority-seg-btn ${isActive}" data-priority="${lvl}" data-issue="${issue.id}">${info.label}</button>`;
     }).join('');
 
+    // Build tenant meta string
+    let tenantMetaStr = '';
+    if (tenant) {
+      tenantMetaStr = `📍 ${tenantFloor}${tenantZone ? ', Zone ' + tenantZone : ''}`;
+    } else {
+      const parts = [];
+      if (tenantContact) parts.push(escapeHtml(tenantContact));
+      if (tenantPhone) parts.push(escapeHtml(tenantPhone));
+      tenantMetaStr = parts.length > 0 ? '👤 ' + parts.join(' • ') : '';
+    }
+
     return `
       <div class="hitl-card" id="card-${issue.id}" data-issue-id="${issue.id}">
         <div class="hitl-card-header">
@@ -95,7 +114,7 @@ function renderCards() {
             <div class="section-label">Tenant Info</div>
             <div class="tenant-row">
               <span class="tenant-name">${tenantName}</span>
-              <span class="tenant-meta">📍 ${tenantFloor}, Zone ${tenantZone}</span>
+              <span class="tenant-meta">${tenantMetaStr}</span>
               <span class="tenant-meta">🕐 ${submittedAgo}</span>
             </div>
           </div>
