@@ -43,9 +43,12 @@ export function checkAuth(requiredRole, loginUrl) {
       const user = JSON.parse(raw);
 
       // If a specific role is required, verify it
-      if (requiredRole && user.role !== requiredRole) {
-        window.location.replace(loginUrl);
-        return false;
+      if (requiredRole) {
+        const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+        if (!allowedRoles.includes(user.role)) {
+          window.location.replace(loginUrl);
+          return false;
+        }
       }
 
       return true;

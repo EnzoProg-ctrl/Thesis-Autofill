@@ -3,15 +3,18 @@
    ============================================================ */
 
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast, showSlideOver, closeSlideOver, escapeHtml } from './shared.js';
-import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, STAFF, getTenantById, getCategoryLabel, getCategoryIcon, getStaffById, getStatusInfo, getPriorityInfo } from './mock-data.js';
+import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getTenantById, getCategoryLabel, getCategoryIcon, getStaffById, getStatusInfo, getPriorityInfo, getUsers } from './mock-data.js';
 
 /* ---------- Auth Guard ---------- */
-// Redirect to login if not authenticated as admin.
-// Uses replace() so the protected page is removed from browser history.
-if (!checkAuth('admin')) {
+// Allow both admin and staff roles to access admin pages.
+if (!checkAuth(['admin', 'staff'])) {
   throw new Error('Not authenticated');
 }
+
+/* ---------- Current User ---------- */
+let currentUser = null;
+try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
 
 /* ---------- State ---------- */
 
@@ -30,13 +33,43 @@ const STATUS_COLUMNS = ['awaiting_review', 'in_progress', 'resolved'];
 
 document.addEventListener('DOMContentLoaded', () => {
   issues = loadIssues();
+  applyRBAC();
   populateFilters();
   renderKPIs();
   renderCurrentView();
   updateHITLBadge();
   bindEvents();
   startAutoRefresh();
+  personalizeTopbar();
 });
+
+/* ==========================================================
+   RBAC — Role-Based Access Control
+   ========================================================== */
+
+function applyRBAC() {
+  if (!currentUser) return;
+
+  if (currentUser.role === 'staff') {
+    // Hide HITL Review, Manage Users, and Analytics links for staff
+    const hitlLink = document.getElementById('hitl-link');
+    if (hitlLink) hitlLink.classList.add('hidden');
+
+    const manageUsersLink = document.getElementById('manage-users-link');
+    if (manageUsersLink) manageUsersLink.classList.add('hidden');
+
+    const analyticsLink = document.querySelector('a[href="analytics.html"]');
+    if (analyticsLink) analyticsLink.classList.add('hidden');
+  }
+}
+
+function personalizeTopbar() {
+  if (!currentUser) return;
+  const avatarEl = document.querySelector('.topbar-avatar');
+  const nameEl = document.querySelector('.topbar-user span:last-child');
+  if (avatarEl) avatarEl.textContent = currentUser.avatar || currentUser.name.substring(0, 3);
+  if (nameEl) nameEl.textContent = currentUser.name || 'User';
+}
 
 /* ==========================================================
    KPI Calculation
@@ -134,12 +167,19 @@ function populateFilters() {
 }
 
 function getFilteredIssues() {
-  return issues.filter(i => {
+  let result = issues.filter(i => {
     if (filters.category && i.aiCategory !== filters.category) return false;
     if (filters.priority && i.aiPriorityLevel !== filters.priority) return false;
     if (filters.status && i.status !== filters.status) return false;
     return true;
   });
+
+  // RBAC: Staff see validated issues assigned to them AND any issue with status 'awaiting_review'
+  if (currentUser && currentUser.role === 'staff') {
+    result = result.filter(i => i.status === 'awaiting_review' || (i.validated === true && i.assignedTo === currentUser.id));
+  }
+
+  return result;
 }
 
 /* ==========================================================
@@ -413,14 +453,37 @@ function openIssueDetail(issueId) {
   let gaugeColor = priorityInfo.color;
 
   // Staff options
-  const staffOptions = STAFF.map(s =>
-    `<option value="${s.id}" ${issue.assignedTo === s.id ? 'selected' : ''}>${s.avatar} ${s.name} — ${s.role}</option>`
+  const staffList = getUsers().filter(s => s.role === 'staff');
+  const staffOptions = staffList.map(s =>
+    `<option value="${s.id}" ${issue.assignedTo === s.id ? 'selected' : ''}>${s.avatar || '👷'} ${s.name} — ${s.trade || 'Staff'}</option>`
   ).join('');
 
   // Status options
   const statusOptions = STATUS_LIST.map(s =>
     `<option value="${s.id}" ${issue.status === s.id ? 'selected' : ''}>${s.label}</option>`
   ).join('');
+
+  const showControls = currentUser && currentUser.role !== 'staff';
+  const controlsHTML = showControls ? `
+    <!-- Assignment -->
+    <div class="form-group">
+      <label class="form-label">Assign To</label>
+      <select class="form-select" id="detail-assign">
+        <option value="">— Unassigned —</option>
+        ${staffOptions}
+      </select>
+    </div>
+
+    <!-- Status -->
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-select" id="detail-status">
+        ${statusOptions}
+      </select>
+    </div>
+
+    <button class="btn btn-primary w-full" id="detail-save" style="margin-top: var(--sp-2);">Save Changes</button>
+  ` : '';
 
   const bodyHTML = `
     <div style="margin-bottom: var(--sp-5);">
@@ -473,45 +536,30 @@ function openIssueDetail(issueId) {
       </div>
     </div>
 
-    <!-- Assignment -->
-    <div class="form-group">
-      <label class="form-label">Assign To</label>
-      <select class="form-select" id="detail-assign">
-        <option value="">— Unassigned —</option>
-        ${staffOptions}
-      </select>
-    </div>
-
-    <!-- Status -->
-    <div class="form-group">
-      <label class="form-label">Status</label>
-      <select class="form-select" id="detail-status">
-        ${statusOptions}
-      </select>
-    </div>
-
-    <button class="btn btn-primary w-full" id="detail-save" style="margin-top: var(--sp-2);">Save Changes</button>
+    ${controlsHTML}
   `;
 
   const panel = showSlideOver(`Issue Detail`, bodyHTML);
 
   // Bind save
   const saveBtn = panel.querySelector('#detail-save');
-  saveBtn.addEventListener('click', () => {
-    const newAssign = panel.querySelector('#detail-assign').value || null;
-    const newStatus = panel.querySelector('#detail-status').value;
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const newAssign = panel.querySelector('#detail-assign').value || null;
+      const newStatus = panel.querySelector('#detail-status').value;
 
-    issues = updateIssue(issue.id, {
-      assignedTo: newAssign,
-      status: newStatus,
+      issues = updateIssue(issue.id, {
+        assignedTo: newAssign,
+        status: newStatus,
+      });
+
+      closeSlideOver();
+      renderKPIs();
+      renderCurrentView();
+      updateHITLBadge();
+      showToast(`${issue.id} updated successfully`, 'success');
     });
-
-    closeSlideOver();
-    renderKPIs();
-    renderCurrentView();
-    updateHITLBadge();
-    showToast(`${issue.id} updated successfully`, 'success');
-  });
+  }
 }
 
 /* ==========================================================
@@ -564,14 +612,35 @@ function bindEvents() {
     toggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('open');
     });
-    // Close sidebar when clicking content on mobile
     document.querySelector('.admin-content').addEventListener('click', () => {
       if (sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
       }
     });
   }
+
+  // Manage Users — admin only
+  const manageUsersLink = document.getElementById('manage-users-link');
+  if (manageUsersLink) {
+    manageUsersLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentUser && currentUser.role === 'admin') {
+        openCreateUserModal();
+      }
+    });
+  }
+
+  // Edit Profile link
+  const editProfileLink = document.getElementById('edit-profile-link');
+  if (editProfileLink) {
+    editProfileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      openEditAdminProfileModal();
+    });
+  }
 }
+
+
 
 /* ==========================================================
    Auto-Refresh (every 30 seconds)

@@ -25,19 +25,25 @@
         </a>
       </div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section-label">Main</div>
+        <div class="sidebar-section-label">Main Menu</div>
         <a href="index.html" class="sidebar-link">
           <span class="link-icon">📊</span> Dashboard
         </a>
-        <a href="hitl.html" class="sidebar-link">
+        <a href="hitl.html" class="sidebar-link" id="hitl-link">
           <span class="link-icon">🔍</span> HITL Review
         </a>
         <a href="analytics.html" class="sidebar-link active">
           <span class="link-icon">📈</span> Analytics
         </a>
+        <a href="#" class="sidebar-link" id="manage-users-link">
+          <span class="link-icon">👥</span> Manage Users
+        </a>
       </nav>
       <div class="sidebar-footer">
-        <a href="#" onclick="event.preventDefault(); sessionStorage.removeItem('firs_user'); window.location.replace('../index.html');"><span>🚪</span> Sign Out</a>
+        <a href="#" id="edit-profile-link" style="margin-bottom: var(--sp-3);"><span class="link-icon">✏️</span> Edit Profile</a>
+        <a href="#" onclick="event.preventDefault(); sessionStorage.removeItem('firs_user'); window.location.replace('../index.html');">
+          <span class="link-icon">🚪</span> Sign Out
+        </a>
       </div>
     </aside>
 

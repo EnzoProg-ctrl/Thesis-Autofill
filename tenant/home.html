@@ -236,6 +236,25 @@
     }
     .empty-reports .empty-sub { font-size: var(--text-sm); }
 
+    /* Action buttons in table */
+    .btn-edit-sm {
+      padding: 4px 10px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--primary-600);
+      background: var(--primary-50);
+      border: 1px solid var(--primary-200);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--ease-fast);
+    }
+    .btn-edit-sm:hover { background: var(--primary-100); }
+    .lock-icon { color: var(--gray-400); font-size: var(--text-xs); }
+
+    /* Modal form group spacing */
+    .modal-form .form-group { margin-bottom: var(--sp-4); }
+    .modal-form .form-group:last-child { margin-bottom: 0; }
+
     @media (max-width: 768px) {
       .status-grid { grid-template-columns: 1fr; }
       .tenant-home-main { padding: var(--sp-6) var(--sp-4); }
@@ -267,6 +286,7 @@
           <div class="name" id="dropdownName">—</div>
           <div class="email" id="dropdownEmail">—</div>
         </div>
+        <button class="user-dropdown-item" id="editProfileBtn">✏️ Edit Profile</button>
         <a href="index.html" class="user-dropdown-item">📝 Submit a Report</a>
         <button class="user-dropdown-item danger" id="logoutBtn">🚪 Sign Out</button>
       </div>
@@ -311,52 +331,113 @@
 
   </main>
 
+  <!-- ========== Edit Profile Modal ========== -->
+  <div class="modal-overlay" id="profileModalOverlay" style="display:none">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <button class="modal-close-btn" id="profileModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-form">
+          <div class="form-group">
+            <label class="form-label" for="editStoreName">Store Name</label>
+            <input type="text" id="editStoreName" class="form-input" placeholder="Store name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editContact">Contact Person</label>
+            <input type="text" id="editContact" class="form-input" placeholder="Full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editPhone">Phone Number</label>
+            <input type="tel" id="editPhone" class="form-input" placeholder="09171234567" maxlength="11">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="profileCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="profileSaveBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Edit Report Modal ========== -->
+  <div class="modal-overlay" id="reportModalOverlay" style="display:none">
+    <div class="modal" style="max-width:540px;">
+      <div class="modal-header">
+        <h3>Edit Report</h3>
+        <button class="modal-close-btn" id="reportModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-form">
+          <div class="form-group">
+            <label class="form-label" for="editIssueId">Issue ID</label>
+            <input type="text" id="editIssueId" class="form-input" readonly style="background:var(--gray-50);cursor:not-allowed;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editCategory">Category</label>
+            <select id="editCategory" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="editDescription">Description</label>
+            <textarea id="editDescription" class="form-textarea" rows="5" maxlength="1000"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="reportCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="reportSaveBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { checkAuth } from '../js/auth-guard.js';
     import { TENANTS, CATEGORIES, STATUS_LIST, getTenantById, getCategoryLabel } from '../js/mock-data.js';
-    import { loadIssues, formatDate, formatRelativeTime } from '../js/shared.js';
+    import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast } from '../js/shared.js';
 
     // ===== Auth Guard =====
     if (!checkAuth('tenant')) {
       throw new Error('Not authenticated');
     }
 
-    // ===== Session Check =====
-    const sessionUser = sessionStorage.getItem('firs_user');
+    // ===== Session =====
     let currentUser = null;
-
-    if (sessionUser) {
-      try { currentUser = JSON.parse(sessionUser); } catch(e) { /* ignore */ }
-    }
-
+    try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
     if (!currentUser || currentUser.role !== 'tenant') {
-      // Auth guard above should have already redirected, but just in case
       window.location.replace('../index.html');
       throw new Error('Not authenticated');
     }
 
-    // ===== Populate User Info =====
-    const displayName = currentUser.storeName || currentUser.name || currentUser.email.split('@')[0];
-    const initials = displayName.substring(0, 2).toUpperCase();
+    // ===== UI Helpers =====
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
 
-    document.getElementById('userAvatar').textContent = initials;
-    document.getElementById('userDisplayName').textContent = displayName;
-    document.getElementById('dropdownName').textContent = displayName;
-    document.getElementById('dropdownEmail').textContent = currentUser.email;
-    document.getElementById('welcomeText').textContent = `Welcome back, ${displayName}!`;
+    function getDisplayName() {
+      return currentUser.storeName || currentUser.name || currentUser.email.split('@')[0];
+    }
+
+    function updateUserUI() {
+      const name = getDisplayName();
+      const initials = name.substring(0, 2).toUpperCase();
+      document.getElementById('userAvatar').textContent = initials;
+      document.getElementById('userDisplayName').textContent = name;
+      document.getElementById('dropdownName').textContent = name;
+      document.getElementById('dropdownEmail').textContent = currentUser.email;
+      document.getElementById('welcomeText').textContent = `Welcome back, ${name}!`;
+    }
+
+    updateUserUI();
 
     // ===== User Dropdown Toggle =====
     const menuBtn = document.getElementById('userMenuBtn');
     const dropdown = document.getElementById('userDropdown');
-
-    menuBtn.addEventListener('click', () => {
-      dropdown.classList.toggle('open');
-    });
-
+    menuBtn.addEventListener('click', () => dropdown.classList.toggle('open'));
     document.addEventListener('click', (e) => {
-      if (!document.getElementById('userMenu').contains(e.target)) {
-        dropdown.classList.remove('open');
-      }
+      if (!document.getElementById('userMenu').contains(e.target)) dropdown.classList.remove('open');
     });
 
     // ===== Logout =====
@@ -370,54 +451,53 @@
     let resolvedTenantId = currentUser.tenantId || null;
 
     if (!resolvedTenantId) {
-      // 1) Check registered tenants by exact email
       const registeredTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
       const regMatch = registeredTenants.find(t => t.email && t.email.toLowerCase() === userEmail);
-      if (regMatch) {
-        resolvedTenantId = regMatch.id;
-      }
+      if (regMatch) resolvedTenantId = regMatch.id;
     }
-
     if (!resolvedTenantId) {
-      // 2) Check built-in TENANTS by exact name match (session name === tenant name)
       const sessionName = (currentUser.storeName || currentUser.name || '').toLowerCase();
       if (sessionName) {
         const builtInMatch = TENANTS.find(t => t.name.toLowerCase() === sessionName);
-        if (builtInMatch) {
-          resolvedTenantId = builtInMatch.id;
-        }
+        if (builtInMatch) resolvedTenantId = builtInMatch.id;
       }
     }
 
-    // ===== Load & Filter Issues =====
-    const allIssues = loadIssues();
-    const myIssues = resolvedTenantId
-      ? allIssues.filter(issue => issue.tenantId === resolvedTenantId)
-      : [];
+    // ==========================================================
+    //  RENDER ISSUES TABLE
+    // ==========================================================
 
-    // ===== Status Counts =====
-    const awaitingCount = myIssues.filter(i =>
-      i.status === 'new' || i.status === 'ai_processing' || i.status === 'awaiting_review'
-    ).length;
-    const inProgressCount = myIssues.filter(i => i.status === 'in_progress').length;
-    const resolvedCount = myIssues.filter(i => i.status === 'resolved').length;
+    function renderDashboard() {
+      const allIssues = loadIssues();
+      const myIssues = resolvedTenantId
+        ? allIssues.filter(issue => issue.tenantId === resolvedTenantId)
+        : [];
 
-    document.getElementById('countAwaiting').textContent = awaitingCount;
-    document.getElementById('countInProgress').textContent = inProgressCount;
-    document.getElementById('countResolved').textContent = resolvedCount;
+      // Status Counts
+      const awaitingCount = myIssues.filter(i =>
+        i.status === 'new' || i.status === 'ai_processing' || i.status === 'awaiting_review'
+      ).length;
+      const inProgressCount = myIssues.filter(i => i.status === 'in_progress').length;
+      const resolvedCount = myIssues.filter(i => i.status === 'resolved').length;
 
-    // ===== Recent Reports Table =====
-    const container = document.getElementById('reportsContainer');
+      document.getElementById('countAwaiting').textContent = awaitingCount;
+      document.getElementById('countInProgress').textContent = inProgressCount;
+      document.getElementById('countResolved').textContent = resolvedCount;
 
-    if (myIssues.length === 0) {
-      container.innerHTML = `
-        <div class="empty-reports">
-          <div class="empty-icon">📭</div>
-          <div class="empty-title">No reports yet</div>
-          <div class="empty-sub">Submit your first facility issue report to get started.</div>
-        </div>
-      `;
-    } else {
+      // Reports Table
+      const container = document.getElementById('reportsContainer');
+
+      if (myIssues.length === 0) {
+        container.innerHTML = `
+          <div class="empty-reports">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">No reports yet</div>
+            <div class="empty-sub">Submit your first facility issue report to get started.</div>
+          </div>
+        `;
+        return;
+      }
+
       const statusLabels = {
         'new': 'New',
         'ai_processing': 'AI Processing',
@@ -433,6 +513,14 @@
         const preview = issue.text.length > 80 ? issue.text.substring(0, 80) + '...' : issue.text;
         const dateStr = formatDate(issue.submittedAt);
 
+        // Actions column: only editable if awaiting_review
+        let actionCell;
+        if (issue.status === 'awaiting_review') {
+          actionCell = `<button class="btn-edit-sm" data-edit-issue="${issue.id}">✏️ Edit</button>`;
+        } else {
+          actionCell = `<span class="lock-icon" title="Cannot edit — status is ${statusText}">🔒</span>`;
+        }
+
         return `
           <tr>
             <td><strong>${issue.id}</strong></td>
@@ -440,6 +528,7 @@
             <td class="hide-mobile">${category}</td>
             <td>${dateStr}</td>
             <td><span class="report-status ${statusClass}">${statusText}</span></td>
+            <td>${actionCell}</td>
           </tr>
         `;
       }).join('');
@@ -453,18 +542,141 @@
               <th class="hide-mobile">Category</th>
               <th>Date</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       `;
+
+      // Attach edit buttons
+      container.querySelectorAll('[data-edit-issue]').forEach(btn => {
+        btn.addEventListener('click', () => openEditReportModal(btn.dataset.editIssue));
+      });
     }
 
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
+    renderDashboard();
+
+    // ==========================================================
+    //  EDIT PROFILE
+    // ==========================================================
+
+    const profileOverlay = document.getElementById('profileModalOverlay');
+    const editStoreNameInput = document.getElementById('editStoreName');
+    const editContactInput = document.getElementById('editContact');
+    const editPhoneInput = document.getElementById('editPhone');
+
+    function openProfileModal() {
+      dropdown.classList.remove('open');
+      editStoreNameInput.value = currentUser.storeName || currentUser.name || '';
+      editContactInput.value = currentUser.contact || '';
+      editPhoneInput.value = currentUser.phone || '';
+      profileOverlay.style.display = 'flex';
     }
+
+    function closeProfileModal() {
+      profileOverlay.style.display = 'none';
+    }
+
+    function saveProfile() {
+      const newName = editStoreNameInput.value.trim();
+      const newContact = editContactInput.value.trim();
+      const newPhone = editPhoneInput.value.trim();
+
+      if (!newName) { showToast('Store name cannot be empty.', 'error'); return; }
+      if (newPhone && !/^\d{11}$/.test(newPhone)) {
+        showToast('Phone number must be exactly 11 digits (e.g., 09171234567).', 'error');
+        return;
+      }
+
+      // Update sessionStorage
+      currentUser.storeName = newName;
+      currentUser.name = newName;
+      currentUser.contact = newContact;
+      currentUser.phone = newPhone;
+      sessionStorage.setItem('firs_user', JSON.stringify(currentUser));
+
+      // Sync to localStorage registered tenants
+      const registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
+      const idx = registered.findIndex(t => t.email && t.email.toLowerCase() === userEmail);
+      if (idx !== -1) {
+        registered[idx].name = newName;
+        registered[idx].contact = newContact;
+        registered[idx].phone = newPhone;
+        localStorage.setItem('firs_registered_tenants', JSON.stringify(registered));
+      }
+
+      // Update UI immediately
+      updateUserUI();
+      closeProfileModal();
+      showToast('Profile updated successfully!', 'success');
+    }
+
+    document.getElementById('editProfileBtn').addEventListener('click', openProfileModal);
+    document.getElementById('profileModalClose').addEventListener('click', closeProfileModal);
+    document.getElementById('profileCancelBtn').addEventListener('click', closeProfileModal);
+    document.getElementById('profileSaveBtn').addEventListener('click', saveProfile);
+    profileOverlay.addEventListener('click', (e) => { if (e.target === profileOverlay) closeProfileModal(); });
+
+    // ==========================================================
+    //  EDIT REPORT
+    // ==========================================================
+
+    const reportOverlay = document.getElementById('reportModalOverlay');
+    const editIssueIdInput = document.getElementById('editIssueId');
+    const editCategorySelect = document.getElementById('editCategory');
+    const editDescriptionArea = document.getElementById('editDescription');
+    let editingIssueId = null;
+
+    // Populate category dropdown once
+    CATEGORIES.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = `${cat.icon}  ${cat.label}`;
+      editCategorySelect.appendChild(opt);
+    });
+
+    function openEditReportModal(issueId) {
+      const allIssues = loadIssues();
+      const issue = allIssues.find(i => i.id === issueId);
+      if (!issue) return;
+
+      editingIssueId = issueId;
+      editIssueIdInput.value = issue.id;
+      editCategorySelect.value = issue.category || issue.aiCategory || '';
+      editDescriptionArea.value = issue.text || '';
+      reportOverlay.style.display = 'flex';
+    }
+
+    function closeReportModal() {
+      reportOverlay.style.display = 'none';
+      editingIssueId = null;
+    }
+
+    function saveReport() {
+      if (!editingIssueId) return;
+
+      const newCategory = editCategorySelect.value;
+      const newText = editDescriptionArea.value.trim();
+
+      if (!newCategory) { showToast('Please select a category.', 'error'); return; }
+      if (newText.length < 10) { showToast('Description must be at least 10 characters.', 'error'); return; }
+
+      updateIssue(editingIssueId, {
+        category: newCategory,
+        text: newText,
+        updatedAt: new Date().toISOString(),
+      });
+
+      closeReportModal();
+      showToast('Report updated successfully!', 'success');
+      renderDashboard();
+    }
+
+    document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
+    document.getElementById('reportCancelBtn').addEventListener('click', closeReportModal);
+    document.getElementById('reportSaveBtn').addEventListener('click', saveReport);
+    reportOverlay.addEventListener('click', (e) => { if (e.target === reportOverlay) closeReportModal(); });
   </script>
 </body>
 </html>

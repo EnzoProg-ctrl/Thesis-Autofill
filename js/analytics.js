@@ -4,10 +4,10 @@
 
 import { checkAuth } from './auth-guard.js';
 import { HISTORICAL_DATA, CATEGORIES, STATUS_LIST, getCategoryLabel } from './mock-data.js';
-import { loadIssues, showToast } from './shared.js';
+import { loadIssues, showToast, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 
 /* ---------- Auth Guard ---------- */
-if (!checkAuth('admin')) {
+if (!checkAuth(['admin', 'staff'])) {
   throw new Error('Not authenticated');
 }
 
@@ -612,9 +612,56 @@ function initSidebarToggle() {
   });
 }
 
-/* ---------- Init ---------- */
+function applyRBAC() {
+  let currentUser = null;
+  try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+  if (!currentUser) return;
+
+  if (currentUser.role === 'staff') {
+    const hitlLink = document.getElementById('hitl-link');
+    if (hitlLink) hitlLink.classList.add('hidden');
+
+    const manageUsersLink = document.getElementById('manage-users-link');
+    if (manageUsersLink) manageUsersLink.classList.add('hidden');
+
+    const analyticsLink = document.querySelector('a[href="analytics.html"]');
+    if (analyticsLink) analyticsLink.classList.add('hidden');
+  }
+
+  // Personalize topbar
+  const avatarEl = document.querySelector('.topbar-avatar');
+  const nameEl = document.querySelector('.topbar-user span:last-child');
+  if (avatarEl) avatarEl.textContent = currentUser.avatar || (currentUser.name ? currentUser.name.substring(0, 3) : 'USR');
+  if (nameEl) nameEl.textContent = currentUser.name || 'User';
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+  applyRBAC();
+  
+  // Resolve current user for event binding
+  let currentUser = null;
+  try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+
+  // Manage Users link listener
+  const manageUsersLink = document.getElementById('manage-users-link');
+  if (manageUsersLink) {
+    manageUsersLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentUser && currentUser.role === 'admin') {
+        openCreateUserModal();
+      }
+    });
+  }
+
+  // Edit Profile link
+  const editProfileLink = document.getElementById('edit-profile-link');
+  if (editProfileLink) {
+    editProfileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      openEditAdminProfileModal();
+    });
+  }
+
   initTimeRange();
   initExportButtons();
   initSidebarToggle();

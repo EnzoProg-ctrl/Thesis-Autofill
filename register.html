@@ -248,7 +248,7 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="phoneNumber">Phone Number <span class="required">*</span></label>
-            <input type="tel" id="phoneNumber" class="form-input" placeholder="0917-000-0000" required>
+            <input type="tel" id="phoneNumber" class="form-input" placeholder="09171234567" maxlength="11" required>
           </div>
         </div>
 
@@ -350,6 +350,7 @@
       if (!floor) return showError('Please select your store floor.');
       if (!contact) return showError('Please enter the contact person name.');
       if (!phone) return showError('Please enter a phone number.');
+      if (!/^\d{11}$/.test(phone)) return showError('Phone number must be exactly 11 digits (e.g., 09171234567).');
       if (!email) return showError('Please enter an email address.');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email address.');
       if (password.length < 6) return showError('Password must be at least 6 characters.');

@@ -3,13 +3,17 @@
    ============================================================ */
 
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, showToast, formatRelativeTime, escapeHtml } from './shared.js';
+import { loadIssues, updateIssue, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, TENANTS, getTenantById, getCategoryLabel, getCategoryIcon, getPriorityInfo } from './mock-data.js';
 
 /* ---------- Auth Guard ---------- */
 if (!checkAuth('admin')) {
   throw new Error('Not authenticated');
 }
+
+/* ---------- Current User ---------- */
+let currentUser = null;
+try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
 
 /* ---------- State ---------- */
 let allIssues = [];
@@ -30,7 +34,29 @@ const statTodayEl      = document.getElementById('stat-today');
 
 /* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  applyRBAC();
   initSidebarToggle();
+  
+  // Manage Users link listener
+  const manageUsersLink = document.getElementById('manage-users-link');
+  if (manageUsersLink) {
+    manageUsersLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentUser && currentUser.role === 'admin') {
+        openCreateUserModal();
+      }
+    });
+  }
+
+  // Edit Profile link
+  const editProfileLink = document.getElementById('edit-profile-link');
+  if (editProfileLink) {
+    editProfileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      openEditAdminProfileModal();
+    });
+  }
+
   refresh();
 });
 
@@ -424,5 +450,17 @@ function initSidebarToggle() {
         sidebar.classList.remove('open');
       }
     });
+  }
+}
+
+function applyRBAC() {
+  if (!currentUser) return;
+
+  if (currentUser.role === 'staff') {
+    const manageUsersLink = document.getElementById('manage-users-link');
+    if (manageUsersLink) manageUsersLink.classList.add('hidden');
+
+    const analyticsLink = document.querySelector('a[href="analytics.html"]');
+    if (analyticsLink) analyticsLink.classList.add('hidden');
   }
 }

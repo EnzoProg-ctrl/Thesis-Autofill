@@ -82,16 +82,37 @@ export const TENANTS = [
   { id: 'T050', name: 'LBC Express', floor: 'GF', zone: 'C', contact: 'Susan Alvarez', phone: '0926-555-0050', type: 'Courier' },
 ];
 
-export const STAFF = [
-  { id: 'S01', name: 'Engr. Roberto Manansala', role: 'Chief Engineer', avatar: '👷' },
-  { id: 'S02', name: 'Mario Dela Vega', role: 'Electrician', avatar: '🔌' },
-  { id: 'S03', name: 'Jun Alvarez', role: 'Plumber', avatar: '🔧' },
-  { id: 'S04', name: 'Dennis Soriano', role: 'HVAC Technician', avatar: '❄️' },
-  { id: 'S05', name: 'Arnold Bautista', role: 'General Maintenance', avatar: '🛠️' },
-  { id: 'S06', name: 'Rex Cayetano', role: 'IT Support', avatar: '💻' },
-  { id: 'S07', name: 'Joel Pangilinan', role: 'Pest Control', avatar: '🐛' },
-  { id: 'S08', name: 'Nestor Roque', role: 'Security Officer', avatar: '🔒' },
+/* ---------- Dynamic User Storage (replaces hardcoded STAFF) ---------- */
+
+const DEFAULT_USERS = [
+  { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: '👤' },
+  { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '👷' },
+  { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: '🔌' },
+  { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: '🔧' },
+  { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: '❄️' },
+  { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '🛠️' },
+  { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: '🔒' },
 ];
+
+function initUsers() {
+  if (!localStorage.getItem('firs_users')) {
+    localStorage.setItem('firs_users', JSON.stringify(DEFAULT_USERS));
+  }
+}
+
+// Initialize on module load
+initUsers();
+
+/** Retrieve all system users (admin + staff) */
+export function getUsers() {
+  try {
+    return JSON.parse(localStorage.getItem('firs_users') || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+
 
 /* ---------- Sample Issues (pre-populated for demo) ---------- */
 
@@ -171,7 +192,8 @@ export function getCategoryIcon(catId) {
 }
 
 export function getStaffById(id) {
-  return STAFF.find(s => s.id === id) || null;
+  const users = getUsers();
+  return users.find(u => u.id === id && u.role === 'staff') || null;
 }
 
 export function getStatusInfo(statusId) {

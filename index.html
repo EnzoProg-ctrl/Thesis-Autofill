@@ -655,6 +655,22 @@
     const forgotLink = document.getElementById('forgotLink');
     const togglePasswordBtn = document.getElementById('togglePassword');
 
+    // Seed default users if local storage is empty
+    (function initUsers() {
+      if (!localStorage.getItem('firs_users')) {
+        var defaultUsers = [
+          { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: '👤' },
+          { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '👷' },
+          { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: '🔌' },
+          { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: '🔧' },
+          { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: '❄️' },
+          { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '🛠️' },
+          { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: '🔒' }
+        ];
+        localStorage.setItem('firs_users', JSON.stringify(defaultUsers));
+      }
+    })();
+
     // Show/Hide password toggle
     togglePasswordBtn.addEventListener('click', function () {
       const isPassword = passwordInput.type === 'password';
@@ -696,41 +712,55 @@
       signInBtn.textContent = 'Signing in...';
 
       setTimeout(function () {
-        // ── Strict Authentication ──
+        // ── Universal Dynamic Login ──
 
-        // 1. Hardcoded Admin account
-        if (email === 'admin@gmail.com' && password === 'admin123') {
+        // 1. Check firs_users (admin / staff accounts)
+        var sysUsers = [];
+        try { sysUsers = JSON.parse(localStorage.getItem('firs_users') || '[]'); } catch (e) { sysUsers = []; }
+
+        var sysMatch = null;
+        for (var i = 0; i < sysUsers.length; i++) {
+          if (sysUsers[i].email && sysUsers[i].email.toLowerCase().trim() === email) {
+            sysMatch = sysUsers[i];
+            break;
+          }
+        }
+
+        if (sysMatch) {
+          if (sysMatch.password !== password) {
+            signInBtn.disabled = false;
+            signInBtn.textContent = 'Sign In';
+            showError('Invalid email or password.');
+            return;
+          }
+
+          // Build session for admin or staff
           sessionStorage.setItem('firs_user', JSON.stringify({
-            email: email,
-            role: 'admin',
-            name: 'PMO Admin',
+            id: sysMatch.id,
+            email: sysMatch.email,
+            role: sysMatch.role,
+            name: sysMatch.name,
+            trade: sysMatch.trade || null,
+            avatar: sysMatch.avatar || '👤',
             loggedInAt: new Date().toISOString()
           }));
           window.location.href = 'admin/index.html';
           return;
         }
 
-        // 2. Registered Tenant — lookup by email in localStorage
-        var rawData = localStorage.getItem('firs_registered_tenants');
+        // 2. Check firs_registered_tenants
         var registered = [];
-        try {
-          registered = JSON.parse(rawData || '[]');
-        } catch (e) {
-          console.error('Failed to parse firs_registered_tenants:', e);
-          registered = [];
-        }
+        try { registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]'); } catch (e) { registered = []; }
 
         var regMatch = null;
-        for (var i = 0; i < registered.length; i++) {
-          var t = registered[i];
-          if (t.email && t.email.toLowerCase().trim() === email) {
-            regMatch = t;
+        for (var j = 0; j < registered.length; j++) {
+          if (registered[j].email && registered[j].email.toLowerCase().trim() === email) {
+            regMatch = registered[j];
             break;
           }
         }
 
         if (regMatch) {
-          // Verify password
           if (regMatch.password !== password) {
             signInBtn.disabled = false;
             signInBtn.textContent = 'Sign In';
@@ -738,8 +768,7 @@
             return;
           }
 
-          // Password matches — build session
-          var sessionData = {
+          sessionStorage.setItem('firs_user', JSON.stringify({
             email: email,
             role: 'tenant',
             tenantId: regMatch.id,
@@ -748,14 +777,12 @@
             contact: regMatch.contact || email.split('@')[0],
             phone: regMatch.phone || '',
             loggedInAt: new Date().toISOString()
-          };
-
-          sessionStorage.setItem('firs_user', JSON.stringify(sessionData));
+          }));
           window.location.href = 'tenant/home.html';
           return;
         }
 
-        // 3. No match found — reject
+        // 3. No match found
         signInBtn.disabled = false;
         signInBtn.textContent = 'Sign In';
         showError('Invalid email or password.');
@@ -789,7 +816,7 @@
       if (user) {
         try {
           const parsed = JSON.parse(user);
-          if (parsed.role === 'admin') {
+          if (parsed.role === 'admin' || parsed.role === 'staff') {
             window.location.href = 'admin/index.html';
           } else {
             window.location.href = 'tenant/home.html';
