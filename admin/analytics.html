@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Nepo Mall — Facility Issue Analytics Dashboard. View trends, AI accuracy, budget impact, and performance metrics.">
+  <meta name="description"
+    content="Nepo Mall — Facility Issue Analytics Dashboard. View trends, AI accuracy, budget impact, and performance metrics.">
   <title>Analytics — Nepo Mall Admin</title>
   <link rel="stylesheet" href="../css/design-system.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/admin.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
   <div class="admin-layout">
 
@@ -27,22 +30,55 @@
       <nav class="sidebar-nav">
         <div class="sidebar-section-label">Main Menu</div>
         <a href="index.html" class="sidebar-link">
-          <span class="link-icon">📊</span> Dashboard
+          <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+              <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+              <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+              <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+            </svg></span> Dashboard
         </a>
         <a href="hitl.html" class="sidebar-link" id="hitl-link">
-          <span class="link-icon">🔍</span> HITL Review
+          <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m20 20-4.05-4.05a7 7 0 1 0-1.41 1.41L18.59 21"></path>
+              <path d="m9 12 2 2 4-4"></path>
+            </svg></span> HITL Review
         </a>
         <a href="analytics.html" class="sidebar-link active">
-          <span class="link-icon">📈</span> Analytics
+          <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="M18 17V9"></path>
+              <path d="M13 17V5"></path>
+              <path d="M8 17v-3"></path>
+            </svg></span> Analytics
         </a>
         <a href="#" class="sidebar-link" id="manage-users-link">
-          <span class="link-icon">👥</span> Manage Users
+          <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg></span> Manage Users
         </a>
       </nav>
       <div class="sidebar-footer">
-        <a href="#" id="edit-profile-link" style="margin-bottom: var(--sp-3);"><span class="link-icon">✏️</span> Edit Profile</a>
-        <a href="#" onclick="event.preventDefault(); sessionStorage.removeItem('firs_user'); window.location.replace('../index.html');">
-          <span class="link-icon">🚪</span> Sign Out
+        <a href="#" id="edit-profile-link" style="margin-bottom: var(--sp-3);"><span class="link-icon"><svg
+              xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+              <path d="m15 5 4 4"></path>
+            </svg></span> Edit Profile</a>
+        <a href="#"
+          onclick="event.preventDefault(); sessionStorage.removeItem('firs_user'); window.location.replace('../index.html');">
+          <span class="link-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg></span> Sign Out
         </a>
       </div>
     </aside>
@@ -53,7 +89,13 @@
       <!-- Top Bar -->
       <header class="admin-topbar">
         <div style="display:flex;align-items:center;gap:var(--sp-3);">
-          <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+          <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><svg
+              xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" x2="20" y1="12" y2="12"></line>
+              <line x1="4" x2="20" y1="6" y2="6"></line>
+              <line x1="4" x2="20" y1="18" y2="18"></line>
+            </svg></button>
           <span class="topbar-title">Analytics</span>
         </div>
         <div class="topbar-right">
@@ -62,8 +104,23 @@
             <button class="segmented-btn" data-range="3">This Quarter</button>
             <button class="segmented-btn active" data-range="6">6 Months</button>
           </div>
-          <button class="btn btn-secondary btn-sm" id="exportPdf">📄 Export PDF</button>
-          <button class="btn btn-secondary btn-sm" id="exportCsv">📊 Export CSV</button>
+          <button class="btn btn-secondary btn-sm" id="exportPdf"><svg xmlns="http://www.w3.org/2000/svg" width="14"
+              height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" style="vertical-align:-2px">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg> Export PDF</button>
+          <button class="btn btn-secondary btn-sm" id="exportCsv"><svg xmlns="http://www.w3.org/2000/svg" width="14"
+              height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" style="vertical-align:-2px">
+              <path d="M12 3v18"></path>
+              <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+              <path d="M3 9h18"></path>
+              <path d="M3 15h18"></path>
+            </svg> Export CSV</button>
         </div>
       </header>
 
@@ -168,4 +225,5 @@
 
   <script type="module" src="../js/analytics.js"></script>
 </body>
+
 </html>

@@ -22,10 +22,12 @@
   z-index: 30;
   transition: transform var(--ease-base);
 }
+
 .sidebar-header {
   padding: var(--sp-5) var(--sp-5);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
+
 .sidebar-header .logo {
   display: flex;
   align-items: center;
@@ -33,6 +35,7 @@
   text-decoration: none;
   color: #fff;
 }
+
 .sidebar-header .logo-icon {
   width: 34px;
   height: 34px;
@@ -44,10 +47,12 @@
   font-size: 16px;
   font-weight: 700;
 }
+
 .sidebar-header .logo-text {
   font-size: var(--text-sm);
   font-weight: 600;
 }
+
 .sidebar-header .logo-sub {
   font-size: var(--text-xs);
   color: var(--gray-400);
@@ -58,6 +63,7 @@
   flex: 1;
   padding: var(--sp-4) var(--sp-3);
 }
+
 .sidebar-section-label {
   font-size: 10px;
   text-transform: uppercase;
@@ -66,6 +72,7 @@
   padding: var(--sp-4) var(--sp-3) var(--sp-2);
   font-weight: 600;
 }
+
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -79,15 +86,31 @@
   transition: all var(--ease-fast);
   margin-bottom: 2px;
 }
+
 .sidebar-link:hover {
   color: #fff;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
 }
+
 .sidebar-link.active {
   color: #fff;
   background: rgba(59, 130, 246, 0.15);
 }
-.sidebar-link .link-icon { font-size: 18px; width: 22px; text-align: center; }
+
+.sidebar-link .link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.sidebar-link .link-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 .sidebar-link .link-badge {
   margin-left: auto;
   background: var(--danger-600);
@@ -100,8 +123,9 @@
 
 .sidebar-footer {
   padding: var(--sp-4) var(--sp-5);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
+
 .sidebar-footer a {
   font-size: var(--text-xs);
   color: var(--gray-500);
@@ -110,7 +134,10 @@
   align-items: center;
   gap: var(--sp-2);
 }
-.sidebar-footer a:hover { color: var(--gray-300); }
+
+.sidebar-footer a:hover {
+  color: var(--gray-300);
+}
 
 
 /* ---------- Admin Content ---------- */
@@ -133,15 +160,18 @@
   top: 0;
   z-index: 20;
 }
+
 .admin-topbar .topbar-title {
   font-size: var(--text-lg);
   font-weight: 600;
 }
+
 .admin-topbar .topbar-right {
   display: flex;
   align-items: center;
   gap: var(--sp-4);
 }
+
 .admin-topbar .topbar-user {
   display: flex;
   align-items: center;
@@ -149,6 +179,7 @@
   font-size: var(--text-sm);
   color: var(--gray-600);
 }
+
 .admin-topbar .topbar-avatar {
   width: 32px;
   height: 32px;
@@ -177,6 +208,7 @@
 .admin-page {
   padding: var(--sp-6);
 }
+
 .admin-page .page-header {
   display: flex;
   align-items: center;
@@ -185,6 +217,7 @@
   gap: var(--sp-4);
   margin-bottom: var(--sp-6);
 }
+
 .admin-page .page-header h1 {
   font-size: var(--text-2xl);
 }
@@ -216,7 +249,10 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
-.table-container .data-table { margin: 0; }
+
+.table-container .data-table {
+  margin: 0;
+}
 
 
 /* ---------- HITL Review ---------- */
@@ -241,13 +277,19 @@
   overflow: hidden;
   margin-bottom: var(--sp-4);
 }
+
 .hitl-card-body {
   padding: var(--sp-6);
 }
+
 .hitl-card-section {
   margin-bottom: var(--sp-5);
 }
-.hitl-card-section:last-child { margin-bottom: 0; }
+
+.hitl-card-section:last-child {
+  margin-bottom: 0;
+}
+
 .hitl-card-section .section-label {
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -256,6 +298,7 @@
   font-weight: 600;
   margin-bottom: var(--sp-2);
 }
+
 .hitl-original-text {
   background: var(--gray-50);
   border: 1px solid var(--gray-200);
@@ -291,10 +334,12 @@
   border-radius: var(--radius-lg);
   padding: var(--sp-5);
 }
+
 .hitl-stats h4 {
   font-size: var(--text-sm);
   margin-bottom: var(--sp-4);
 }
+
 .stat-row {
   display: flex;
   justify-content: space-between;
@@ -302,9 +347,19 @@
   font-size: var(--text-sm);
   border-bottom: 1px solid var(--gray-100);
 }
-.stat-row:last-child { border-bottom: none; }
-.stat-row .stat-label { color: var(--gray-500); }
-.stat-row .stat-value { font-weight: 600; color: var(--gray-800); }
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .stat-label {
+  color: var(--gray-500);
+}
+
+.stat-row .stat-value {
+  font-weight: 600;
+  color: var(--gray-800);
+}
 
 
 /* ---------- Analytics ---------- */
@@ -313,13 +368,18 @@
   grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-6);
 }
+
 .analytics-card {
   background: #fff;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg);
   padding: var(--sp-5);
 }
-.analytics-card.full-width { grid-column: 1 / -1; }
+
+.analytics-card.full-width {
+  grid-column: 1 / -1;
+}
+
 .analytics-card h4 {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -330,26 +390,60 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .analytics-grid { grid-template-columns: 1fr; }
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .admin-sidebar {
     transform: translateX(-100%);
   }
-  .admin-sidebar.open { transform: translateX(0); }
-  .admin-content { margin-left: 0; }
-  .sidebar-toggle { display: block; }
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .admin-page { padding: var(--sp-4); }
 
-  .kanban-board { flex-direction: column; }
-  .kanban-column { min-width: 100%; max-width: 100%; }
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .admin-content {
+    margin-left: 0;
+  }
+
+  .sidebar-toggle {
+    display: block;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-page {
+    padding: var(--sp-4);
+  }
+
+  .kanban-board {
+    flex-direction: column;
+  }
+
+  .kanban-column {
+    min-width: 100%;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
-  .kpi-grid { grid-template-columns: 1fr; }
-  .hitl-actions { flex-direction: column; }
-  .hitl-actions .btn { width: 100%; }
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hitl-actions {
+    flex-direction: column;
+  }
+
+  .hitl-actions .btn {
+    width: 100%;
+  }
 }

@@ -99,7 +99,7 @@ function populateCategories() {
   CATEGORIES.forEach(cat => {
     const opt = document.createElement('option');
     opt.value = cat.id;
-    opt.textContent = `${cat.icon}  ${cat.label}`;
+    opt.textContent = cat.label;
     categorySelect.appendChild(opt);
   });
 }
@@ -353,7 +353,7 @@ reportForm.addEventListener('submit', async (e) => {
     const modalBody = overlay.querySelector('.modal-body');
     modalBody.innerHTML = `
       <div style="text-align:center;margin-bottom:var(--sp-6);">
-        <div style="font-size:40px;margin-bottom:var(--sp-2);">✅</div>
+        <div style="margin-bottom:var(--sp-2);color:var(--success-600);"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
         <div style="font-size:var(--text-lg);font-weight:600;color:var(--gray-900);">Report Submitted Successfully</div>
         <div style="font-size:var(--text-sm);color:var(--gray-500);margin-top:var(--sp-1);">Your issue has been logged and sent for review.</div>
       </div>

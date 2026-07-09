@@ -14,7 +14,7 @@ if (!checkAuth(['admin', 'staff'])) {
 
 /* ---------- Current User ---------- */
 let currentUser = null;
-try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
 
 /* ---------- State ---------- */
 
@@ -145,7 +145,7 @@ function populateFilters() {
   CATEGORIES.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.id;
-    opt.textContent = `${c.icon} ${c.label}`;
+    opt.textContent = c.label;
     catSelect.appendChild(opt);
   });
 
@@ -455,7 +455,7 @@ function openIssueDetail(issueId) {
   // Staff options
   const staffList = getUsers().filter(s => s.role === 'staff');
   const staffOptions = staffList.map(s =>
-    `<option value="${s.id}" ${issue.assignedTo === s.id ? 'selected' : ''}>${s.avatar || '👷'} ${s.name} — ${s.trade || 'Staff'}</option>`
+    `<option value="${s.id}" ${issue.assignedTo === s.id ? 'selected' : ''}>${s.name} — ${s.trade || 'Staff'}</option>`
   ).join('');
 
   // Status options
@@ -493,11 +493,11 @@ function openIssueDetail(issueId) {
         ${issue.validated ? '<span class="badge badge-success">✓ Validated</span>' : '<span class="badge badge-warning">Pending Review</span>'}
       </div>
       ${tenant
-        ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(tenant.name)} • ${tenant.floor}${tenant.zone ? ' Zone ' + tenant.zone : ''}</div>`
-        : (issue.storeName
-          ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(issue.storeName)}${issue.contactPerson ? ' • ' + escapeHtml(issue.contactPerson) : ''}${issue.phoneNumber ? ' • ' + escapeHtml(issue.phoneNumber) : ''}</div>`
-          : '')
-      }
+      ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(tenant.name)} • ${tenant.floor}${tenant.zone ? ' Zone ' + tenant.zone : ''}</div>`
+      : (issue.storeName
+        ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(issue.storeName)}${issue.contactPerson ? ' • ' + escapeHtml(issue.contactPerson) : ''}${issue.phoneNumber ? ' • ' + escapeHtml(issue.phoneNumber) : ''}</div>`
+        : '')
+    }
     </div>
 
     <!-- Original Text -->

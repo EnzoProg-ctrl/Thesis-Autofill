@@ -2,18 +2,20 @@
    Mock Data — 50 Tenants, Sample Issues, Staff, Analytics
    ============================================================ */
 
+import { CATEGORY_ICONS } from './icons.js';
+
 export const CATEGORIES = [
-  { id: 'electrical', label: 'Electrical', icon: '⚡' },
-  { id: 'plumbing', label: 'Plumbing', icon: '🔧' },
-  { id: 'hvac', label: 'HVAC / Air Conditioning', icon: '❄️' },
-  { id: 'structural', label: 'Structural', icon: '🏗️' },
-  { id: 'pest', label: 'Pest Control', icon: '🐛' },
-  { id: 'elevator', label: 'Elevator / Escalator', icon: '🛗' },
-  { id: 'fire_safety', label: 'Fire Safety', icon: '🔥' },
-  { id: 'housekeeping', label: 'Housekeeping', icon: '🧹' },
-  { id: 'security', label: 'Security', icon: '🔒' },
-  { id: 'it_network', label: 'IT / Network', icon: '📡' },
-  { id: 'other', label: 'Other', icon: '📋' },
+  { id: 'electrical', label: 'Electrical', icon: CATEGORY_ICONS.electrical },
+  { id: 'plumbing', label: 'Plumbing', icon: CATEGORY_ICONS.plumbing },
+  { id: 'hvac', label: 'HVAC / Air Conditioning', icon: CATEGORY_ICONS.hvac },
+  { id: 'structural', label: 'Structural', icon: CATEGORY_ICONS.structural },
+  { id: 'pest', label: 'Pest Control', icon: CATEGORY_ICONS.pest },
+  { id: 'elevator', label: 'Elevator / Escalator', icon: CATEGORY_ICONS.elevator },
+  { id: 'fire_safety', label: 'Fire Safety', icon: CATEGORY_ICONS.fire_safety },
+  { id: 'housekeeping', label: 'Housekeeping', icon: CATEGORY_ICONS.housekeeping },
+  { id: 'security', label: 'Security', icon: CATEGORY_ICONS.security },
+  { id: 'it_network', label: 'IT / Network', icon: CATEGORY_ICONS.it_network },
+  { id: 'other', label: 'Other', icon: CATEGORY_ICONS.other },
 ];
 
 export const PRIORITY_LEVELS = [
@@ -85,13 +87,13 @@ export const TENANTS = [
 /* ---------- Dynamic User Storage (replaces hardcoded STAFF) ---------- */
 
 const DEFAULT_USERS = [
-  { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: '👤' },
-  { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '👷' },
-  { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: '🔌' },
-  { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: '🔧' },
-  { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: '❄️' },
-  { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '🛠️' },
-  { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: '🔒' },
+  { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: 'SA' },
+  { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: 'RM' },
+  { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: 'MD' },
+  { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: 'JA' },
+  { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: 'DS' },
+  { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: 'AB' },
+  { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: 'RC' },
 ];
 
 function initUsers() {
@@ -188,7 +190,7 @@ export function getCategoryLabel(catId) {
 
 export function getCategoryIcon(catId) {
   const c = CATEGORIES.find(c => c.id === catId);
-  return c ? c.icon : '📋';
+  return c ? c.icon : CATEGORY_ICONS.other;
 }
 
 export function getStaffById(id) {

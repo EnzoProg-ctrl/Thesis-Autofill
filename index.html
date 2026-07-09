@@ -590,7 +590,7 @@
 
         <!-- Error -->
         <div class="auth-error" id="authError">
-          <span>⚠</span>
+          <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span>
           <span id="authErrorText">Invalid email or password.</span>
         </div>
 
@@ -659,13 +659,13 @@
     (function initUsers() {
       if (!localStorage.getItem('firs_users')) {
         var defaultUsers = [
-          { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: '👤' },
-          { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '👷' },
-          { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: '🔌' },
-          { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: '🔧' },
-          { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: '❄️' },
-          { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: '🛠️' },
-          { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: '🔒' }
+          { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: 'SA' },
+          { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: 'RM' },
+          { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: 'MD' },
+          { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: 'JA' },
+          { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: 'DS' },
+          { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: 'AB' },
+          { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: 'RC' }
         ];
         localStorage.setItem('firs_users', JSON.stringify(defaultUsers));
       }
@@ -741,7 +741,7 @@
             role: sysMatch.role,
             name: sysMatch.name,
             trade: sysMatch.trade || null,
-            avatar: sysMatch.avatar || '👤',
+            avatar: sysMatch.avatar || 'SA',
             loggedInAt: new Date().toISOString()
           }));
           window.location.href = 'admin/index.html';

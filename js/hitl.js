@@ -13,7 +13,7 @@ if (!checkAuth('admin')) {
 
 /* ---------- Current User ---------- */
 let currentUser = null;
-try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
 
 /* ---------- State ---------- */
 let allIssues = [];
@@ -22,21 +22,21 @@ let currentCardIndex = 0;
 
 /* ---------- DOM refs ---------- */
 const reviewContainer = document.getElementById('review-cards');
-const queueCountEl    = document.getElementById('queue-count');
-const sidebarBadgeEl  = document.getElementById('sidebar-badge');
+const queueCountEl = document.getElementById('queue-count');
+const sidebarBadgeEl = document.getElementById('sidebar-badge');
 
 // Stats
-const statTotalEl      = document.getElementById('stat-total');
-const statAgreementEl  = document.getElementById('stat-agreement');
+const statTotalEl = document.getElementById('stat-total');
+const statAgreementEl = document.getElementById('stat-agreement');
 const statOverriddenEl = document.getElementById('stat-overridden-cat');
-const statAvgConfEl    = document.getElementById('stat-avg-conf');
-const statTodayEl      = document.getElementById('stat-today');
+const statAvgConfEl = document.getElementById('stat-avg-conf');
+const statTodayEl = document.getElementById('stat-today');
 
 /* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   applyRBAC();
   initSidebarToggle();
-  
+
   // Manage Users link listener
   const manageUsersLink = document.getElementById('manage-users-link');
   if (manageUsersLink) {
@@ -76,7 +76,7 @@ function renderCards() {
   if (unvalidated.length === 0) {
     reviewContainer.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">✅</div>
+        <div class="empty-state-icon" style="color:var(--success-600)"><svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
         <div class="empty-state-title">All Caught Up!</div>
         <div class="empty-state-text">No issues awaiting validation. Great work!</div>
       </div>
@@ -86,18 +86,18 @@ function renderCards() {
 
   reviewContainer.innerHTML = unvalidated.map((issue, idx) => {
     const tenant = getTenantById(issue.tenantId);
-    const tenantName    = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || 'Unknown Tenant');
-    const tenantFloor   = tenant ? tenant.floor : '—';
-    const tenantZone    = tenant ? tenant.zone : '';
+    const tenantName = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || 'Unknown Tenant');
+    const tenantFloor = tenant ? tenant.floor : '—';
+    const tenantZone = tenant ? tenant.zone : '';
     const tenantContact = tenant ? (tenant.contact || '') : (issue.contactPerson || '');
-    const tenantPhone   = tenant ? (tenant.phone || '') : (issue.phoneNumber || '');
-    const submittedAgo  = formatRelativeTime(issue.submittedAt);
+    const tenantPhone = tenant ? (tenant.phone || '') : (issue.phoneNumber || '');
+    const submittedAgo = formatRelativeTime(issue.submittedAt);
 
-    const aiCatLabel  = getCategoryLabel(issue.aiCategory);
-    const aiCatIcon   = getCategoryIcon(issue.aiCategory);
-    const aiPriInfo   = getPriorityInfo(issue.aiPriorityLevel);
-    const confidence  = issue.aiConfidence || 0;
-    const confLevel   = confidence >= 85 ? 'high' : confidence >= 65 ? 'medium' : 'low';
+    const aiCatLabel = getCategoryLabel(issue.aiCategory);
+    const aiCatIcon = getCategoryIcon(issue.aiCategory);
+    const aiPriInfo = getPriorityInfo(issue.aiPriorityLevel);
+    const confidence = issue.aiConfidence || 0;
+    const confLevel = confidence >= 85 ? 'high' : confidence >= 65 ? 'medium' : 'low';
     const priorityScore = issue.aiPriority || 0;
 
     // Generate reasoning from AI analysis data
@@ -105,7 +105,7 @@ function renderCards() {
 
     // Category dropdown options
     const catOptions = CATEGORIES.map(c =>
-      `<option value="${c.id}" ${c.id === issue.aiCategory ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+      `<option value="${c.id}" ${c.id === issue.aiCategory ? 'selected' : ''}>${c.label}</option>`
     ).join('');
 
     // Priority segmented control
@@ -119,12 +119,12 @@ function renderCards() {
     // Build tenant meta string
     let tenantMetaStr = '';
     if (tenant) {
-      tenantMetaStr = `📍 ${tenantFloor}${tenantZone ? ', Zone ' + tenantZone : ''}`;
+      tenantMetaStr = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>${tenantFloor}${tenantZone ? ', Zone ' + tenantZone : ''}`;
     } else {
       const parts = [];
       if (tenantContact) parts.push(escapeHtml(tenantContact));
       if (tenantPhone) parts.push(escapeHtml(tenantPhone));
-      tenantMetaStr = parts.length > 0 ? '👤 ' + parts.join(' • ') : '';
+      tenantMetaStr = parts.length > 0 ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>` + parts.join(' • ') : '';
     }
 
     return `
@@ -222,7 +222,7 @@ function renderCards() {
 /* ---------- AI Reasoning generator ---------- */
 function generateReasoning(issue) {
   const catLabel = getCategoryLabel(issue.aiCategory);
-  const priInfo  = getPriorityInfo(issue.aiPriorityLevel);
+  const priInfo = getPriorityInfo(issue.aiPriorityLevel);
   const conf = issue.aiConfidence || 0;
 
   let reasoning = `The model classified this as <strong>${catLabel}</strong> with ${conf}% confidence. `;
@@ -323,7 +323,7 @@ function handleOverride(issueId) {
 
   animateCardOut(issueId, () => {
     if (wasOverridden) {
-      showToast(`⚡ ${issueId} validated with expert override`, 'info');
+      showToast(`${issueId} validated with expert override`, 'info');
     } else {
       showToast(`✓ ${issueId} validated — matches AI classification`, 'success');
     }
@@ -445,8 +445,8 @@ function initSidebarToggle() {
     // Close sidebar when clicking outside on mobile
     document.addEventListener('click', (e) => {
       if (sidebar.classList.contains('open') &&
-          !sidebar.contains(e.target) &&
-          !toggle.contains(e.target)) {
+        !sidebar.contains(e.target) &&
+        !toggle.contains(e.target)) {
         sidebar.classList.remove('open');
       }
     });

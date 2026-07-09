@@ -287,10 +287,10 @@ export function openCreateUserModal() {
 
     // Avatar based on trade/role
     const tradeAvatars = {
-      'Electrician': '🔌', 'Plumber': '🔧', 'HVAC': '❄️',
-      'General': '🛠️', 'Security': '🔒'
+      'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
+      'General': 'GN', 'Security': 'SC'
     };
-    const avatar = role === 'staff' ? (tradeAvatars[trade] || '🛠️') : '👤';
+    const avatar = role === 'staff' ? (tradeAvatars[trade] || 'GN') : 'SA';
 
     const newUser = {
       id: newId,
@@ -399,10 +399,10 @@ export function openEditAdminProfileModal() {
       users[idx].trade = trade;
       // Avatar based on trade
       const tradeAvatars = {
-        'Electrician': '🔌', 'Plumber': '🔧', 'HVAC': '❄️',
-        'General': '🛠️', 'Security': '🔒'
+        'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
+        'General': 'GN', 'Security': 'SC'
       };
-      users[idx].avatar = tradeAvatars[trade] || '🛠️';
+      users[idx].avatar = tradeAvatars[trade] || 'GN';
     }
 
     localStorage.setItem('firs_users', JSON.stringify(users));
@@ -411,7 +411,7 @@ export function openEditAdminProfileModal() {
     const updatedUser = {
       ...currentUser,
       name: name,
-      avatar: users[idx].avatar || currentUser.avatar || '👤'
+      avatar: users[idx].avatar || currentUser.avatar || 'SA'
     };
     if (isStaff) {
       updatedUser.trade = trade;
