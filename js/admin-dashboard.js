@@ -128,7 +128,7 @@ function setTrend(id, value, label, isUpBad) {
    ========================================================== */
 
 function updateHITLBadge() {
-  const count = issues.filter(i => !i.validated).length;
+  const count = issues.filter(i => i.validated === false && i.status !== 'resolved').length;
   const badge = document.getElementById('hitl-badge');
   if (badge) {
     badge.textContent = count;
