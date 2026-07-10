@@ -34,6 +34,7 @@ const reportForm          = document.getElementById('reportForm');
 /* ---------- State ---------- */
 let resolvedTenantId = null;
 let selectedFile     = null;
+let selectedFileBase64 = null;
 
 
 /* ==========================================================
@@ -177,7 +178,8 @@ function handleFile(file) {
 
   const reader = new FileReader();
   reader.onload = (e) => {
-    previewThumb.src = e.target.result;
+    selectedFileBase64 = e.target.result;
+    previewThumb.src = selectedFileBase64;
   };
   reader.readAsDataURL(file);
 
@@ -190,6 +192,7 @@ function handleFile(file) {
 
 fileRemove.addEventListener('click', () => {
   selectedFile = null;
+  selectedFileBase64 = null;
   fileInput.value = '';
   previewThumb.src = '';
   previewName.textContent = '';
@@ -327,6 +330,7 @@ reportForm.addEventListener('submit', async (e) => {
       validatedBy: null,
       submittedAt: now,
       updatedAt: now,
+      imageUrl: selectedFileBase64 || null,
     };
 
     // Save to localStorage
@@ -448,6 +452,7 @@ function clearFormForNext() {
   categorySelect.value = '';
   descriptionText.value = '';
   selectedFile = null;
+  selectedFileBase64 = null;
 
   // Reset file preview
   filePreview.classList.add('hidden');

@@ -39,6 +39,12 @@ export function updateIssue(issueId, updates) {
   return issues;
 }
 
+export function deleteIssue(issueId) {
+  const issues = loadIssues();
+  const filtered = issues.filter(i => i.id !== issueId);
+  saveIssues(filtered);
+  return filtered;
+}
 
 /* ---------- ID Generator ---------- */
 

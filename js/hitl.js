@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ---------- Refresh all data ---------- */
 function refresh() {
   allIssues = loadIssues();
-  unvalidated = allIssues.filter(i => i.validated === false);
+  unvalidated = allIssues.filter(i => i.validated === false && i.status !== 'resolved');
   renderCards();
   updateStats();
   updateBadge();
@@ -150,6 +150,14 @@ function renderCards() {
             <div class="section-label">Original Report (${escapeHtml(issue.aiLanguage || 'Taglish')})</div>
             <div class="hitl-original-text">${escapeHtml(issue.text)}</div>
           </div>
+
+          ${issue.imageUrl ? `
+          <!-- Attached Photo -->
+          <div class="hitl-card-section">
+            <div class="section-label">Attached Photo</div>
+            <img src="${issue.imageUrl}" alt="Issue photo" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:pointer;" onclick="window.open(this.src,'_blank')">
+          </div>
+          ` : ''}
 
           <!-- AI Analysis -->
           <div class="hitl-card-section">

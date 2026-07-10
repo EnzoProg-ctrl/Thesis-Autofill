@@ -7,14 +7,12 @@ import { CATEGORY_ICONS } from './icons.js';
 export const CATEGORIES = [
   { id: 'electrical', label: 'Electrical', icon: CATEGORY_ICONS.electrical },
   { id: 'plumbing', label: 'Plumbing', icon: CATEGORY_ICONS.plumbing },
-  { id: 'hvac', label: 'HVAC / Air Conditioning', icon: CATEGORY_ICONS.hvac },
+  { id: 'hvac', label: 'Air Conditioning', icon: CATEGORY_ICONS.hvac },
   { id: 'structural', label: 'Structural', icon: CATEGORY_ICONS.structural },
-  { id: 'pest', label: 'Pest Control', icon: CATEGORY_ICONS.pest },
-  { id: 'elevator', label: 'Elevator / Escalator', icon: CATEGORY_ICONS.elevator },
+  { id: 'elevator', label: 'Escalator', icon: CATEGORY_ICONS.elevator },
   { id: 'fire_safety', label: 'Fire Safety', icon: CATEGORY_ICONS.fire_safety },
   { id: 'housekeeping', label: 'Housekeeping', icon: CATEGORY_ICONS.housekeeping },
   { id: 'security', label: 'Security', icon: CATEGORY_ICONS.security },
-  { id: 'it_network', label: 'IT / Network', icon: CATEGORY_ICONS.it_network },
   { id: 'other', label: 'Other', icon: CATEGORY_ICONS.other },
 ];
 

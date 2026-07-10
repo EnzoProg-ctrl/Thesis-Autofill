@@ -506,6 +506,14 @@ function openIssueDetail(issueId) {
       <div class="hitl-original-text">${escapeHtml(issue.text)}</div>
     </div>
 
+    ${issue.imageUrl ? `
+    <!-- Attached Photo -->
+    <div style="margin-bottom: var(--sp-5);">
+      <div class="text-xs font-semibold text-muted" style="text-transform:uppercase; letter-spacing:0.05em; margin-bottom: var(--sp-2);">Attached Photo</div>
+      <img src="${issue.imageUrl}" alt="Issue photo" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:pointer;" onclick="window.open(this.src,'_blank')">
+    </div>
+    ` : ''}
+
     <!-- AI Analysis -->
     <div style="margin-bottom: var(--sp-5);">
       <div class="text-xs font-semibold text-muted" style="text-transform:uppercase; letter-spacing:0.05em; margin-bottom: var(--sp-3);">AI Analysis</div>

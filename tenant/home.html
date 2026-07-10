@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Tenant Home Dashboard — Nepo Mall Facility Issue Reporting System. View your issues and submit new reports.">
+  <meta name="description"
+    content="Tenant Home Dashboard — Nepo Mall Facility Issue Reporting System. View your issues and submit new reports.">
   <title>Home — Nepo Mall FIRS</title>
   <link rel="stylesheet" href="../css/design-system.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -20,6 +22,7 @@
     .user-menu {
       position: relative;
     }
+
     .user-menu-btn {
       display: flex;
       align-items: center;
@@ -33,7 +36,11 @@
       cursor: pointer;
       transition: background var(--ease-fast);
     }
-    .user-menu-btn:hover { background: var(--gray-50); }
+
+    .user-menu-btn:hover {
+      background: var(--gray-50);
+    }
+
     .user-menu-btn .user-avatar {
       width: 28px;
       height: 28px;
@@ -46,6 +53,7 @@
       font-size: var(--text-xs);
       font-weight: 600;
     }
+
     .user-dropdown {
       position: absolute;
       top: calc(100% + 6px);
@@ -59,21 +67,28 @@
       display: none;
       overflow: hidden;
     }
-    .user-dropdown.open { display: block; }
+
+    .user-dropdown.open {
+      display: block;
+    }
+
     .user-dropdown-header {
       padding: var(--sp-3) var(--sp-4);
       border-bottom: 1px solid var(--gray-100);
     }
+
     .user-dropdown-header .name {
       font-size: var(--text-sm);
       font-weight: 600;
       color: var(--gray-800);
     }
+
     .user-dropdown-header .email {
       font-size: var(--text-xs);
       color: var(--gray-500);
       margin-top: 2px;
     }
+
     .user-dropdown-item {
       display: flex;
       align-items: center;
@@ -88,24 +103,33 @@
       cursor: pointer;
       text-align: left;
     }
-    .user-dropdown-item:hover { background: var(--gray-50); }
-    .user-dropdown-item.danger { color: var(--danger-600); }
+
+    .user-dropdown-item:hover {
+      background: var(--gray-50);
+    }
+
+    .user-dropdown-item.danger {
+      color: var(--danger-600);
+    }
 
     /* Hero section */
     .hero-section {
       margin-bottom: var(--sp-8);
     }
+
     .hero-section .welcome-text {
       font-size: var(--text-2xl);
       font-weight: 700;
       color: var(--gray-900);
       margin-bottom: var(--sp-2);
     }
+
     .hero-section .welcome-sub {
       font-size: var(--text-sm);
       color: var(--gray-500);
       margin-bottom: var(--sp-6);
     }
+
     .submit-cta {
       display: inline-flex;
       align-items: center;
@@ -119,7 +143,11 @@
       color: #fff;
       transition: background var(--ease-fast);
     }
-    .submit-cta:hover { background: var(--primary-700); color: #fff; }
+
+    .submit-cta:hover {
+      background: var(--primary-700);
+      color: #fff;
+    }
 
     /* Status summary cards */
     .status-grid {
@@ -128,6 +156,7 @@
       gap: var(--sp-4);
       margin-bottom: var(--sp-8);
     }
+
     .status-card {
       background: #fff;
       border: 1px solid var(--gray-200);
@@ -136,9 +165,19 @@
       text-align: center;
       border-top: 3px solid var(--gray-300);
     }
-    .status-card.awaiting { border-top-color: var(--warning-500); }
-    .status-card.in-progress { border-top-color: var(--info-500); }
-    .status-card.resolved { border-top-color: var(--success-500); }
+
+    .status-card.awaiting {
+      border-top-color: var(--warning-500);
+    }
+
+    .status-card.in-progress {
+      border-top-color: var(--info-500);
+    }
+
+    .status-card.resolved {
+      border-top-color: var(--success-500);
+    }
+
     .status-card .status-count {
       font-size: var(--text-3xl);
       font-weight: 700;
@@ -146,9 +185,19 @@
       line-height: 1;
       margin-bottom: var(--sp-2);
     }
-    .status-card.awaiting .status-count { color: var(--warning-600); }
-    .status-card.in-progress .status-count { color: var(--info-600); }
-    .status-card.resolved .status-count { color: var(--success-600); }
+
+    .status-card.awaiting .status-count {
+      color: var(--warning-600);
+    }
+
+    .status-card.in-progress .status-count {
+      color: var(--info-600);
+    }
+
+    .status-card.resolved .status-count {
+      color: var(--success-600);
+    }
+
     .status-card .status-label {
       font-size: var(--text-xs);
       text-transform: uppercase;
@@ -163,6 +212,7 @@
       margin-bottom: var(--sp-4);
       color: var(--gray-800);
     }
+
     .reports-table {
       width: 100%;
       background: #fff;
@@ -170,6 +220,7 @@
       border-radius: var(--radius-lg);
       overflow: hidden;
     }
+
     .reports-table th {
       text-align: left;
       padding: 12px 16px;
@@ -181,6 +232,7 @@
       background: var(--gray-50);
       border-bottom: 2px solid var(--gray-200);
     }
+
     .reports-table td {
       padding: 14px 16px;
       font-size: var(--text-sm);
@@ -188,8 +240,15 @@
       border-bottom: 1px solid var(--gray-100);
       vertical-align: middle;
     }
-    .reports-table tbody tr:last-child td { border-bottom: none; }
-    .reports-table tbody tr:hover { background: var(--gray-50); }
+
+    .reports-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .reports-table tbody tr:hover {
+      background: var(--gray-50);
+    }
+
     .report-text-preview {
       max-width: 320px;
       white-space: nowrap;
@@ -208,11 +267,31 @@
       font-weight: 600;
       border-radius: var(--radius-full);
     }
-    .report-status.new { background: #ede9fe; color: #6d28d9; }
-    .report-status.ai_processing { background: #f3e8ff; color: #7c3aed; }
-    .report-status.awaiting_review { background: var(--warning-50); color: var(--warning-600); }
-    .report-status.in_progress { background: var(--info-50); color: var(--info-600); }
-    .report-status.resolved { background: var(--success-50); color: var(--success-600); }
+
+    .report-status.new {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    .report-status.ai_processing {
+      background: #f3e8ff;
+      color: #7c3aed;
+    }
+
+    .report-status.awaiting_review {
+      background: var(--warning-50);
+      color: var(--warning-600);
+    }
+
+    .report-status.in_progress {
+      background: var(--info-50);
+      color: var(--info-600);
+    }
+
+    .report-status.resolved {
+      background: var(--success-50);
+      color: var(--success-600);
+    }
 
     .report-status::before {
       content: '';
@@ -227,14 +306,22 @@
       padding: var(--sp-10) var(--sp-6);
       color: var(--gray-400);
     }
-    .empty-reports .empty-icon { font-size: 40px; margin-bottom: var(--sp-3); }
+
+    .empty-reports .empty-icon {
+      font-size: 40px;
+      margin-bottom: var(--sp-3);
+    }
+
     .empty-reports .empty-title {
       font-size: var(--text-base);
       font-weight: 600;
       color: var(--gray-600);
       margin-bottom: var(--sp-1);
     }
-    .empty-reports .empty-sub { font-size: var(--text-sm); }
+
+    .empty-reports .empty-sub {
+      font-size: var(--text-sm);
+    }
 
     /* Action buttons in table */
     .btn-edit-sm {
@@ -248,24 +335,69 @@
       cursor: pointer;
       transition: all var(--ease-fast);
     }
-    .btn-edit-sm:hover { background: var(--primary-100); }
-    .lock-icon { color: var(--gray-400); font-size: var(--text-xs); }
+
+    .btn-edit-sm:hover {
+      background: var(--primary-100);
+    }
+
+    .btn-delete-sm {
+      padding: 4px 10px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--danger-600);
+      background: var(--danger-50, #fef2f2);
+      border: 1px solid var(--danger-200, #fecaca);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--ease-fast);
+    }
+
+    .btn-delete-sm:hover {
+      background: var(--danger-100, #fee2e2);
+    }
+
+    .lock-icon {
+      color: var(--gray-400);
+      font-size: var(--text-xs);
+    }
 
     /* Modal form group spacing */
-    .modal-form .form-group { margin-bottom: var(--sp-4); }
-    .modal-form .form-group:last-child { margin-bottom: 0; }
+    .modal-form .form-group {
+      margin-bottom: var(--sp-4);
+    }
+
+    .modal-form .form-group:last-child {
+      margin-bottom: 0;
+    }
 
     @media (max-width: 768px) {
-      .status-grid { grid-template-columns: 1fr; }
-      .tenant-home-main { padding: var(--sp-6) var(--sp-4); }
-      .reports-table { display: block; overflow-x: auto; }
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tenant-home-main {
+        padding: var(--sp-6) var(--sp-4);
+      }
+
+      .reports-table {
+        display: block;
+        overflow-x: auto;
+      }
     }
+
     @media (max-width: 480px) {
-      .hero-section .welcome-text { font-size: var(--text-xl); }
-      .submit-cta { width: 100%; justify-content: center; }
+      .hero-section .welcome-text {
+        font-size: var(--text-xl);
+      }
+
+      .submit-cta {
+        width: 100%;
+        justify-content: center;
+      }
     }
   </style>
 </head>
+
 <body>
 
   <!-- ========== Header ========== -->
@@ -286,9 +418,27 @@
           <div class="name" id="dropdownName">—</div>
           <div class="email" id="dropdownEmail">—</div>
         </div>
-        <button class="user-dropdown-item" id="editProfileBtn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg> Edit Profile</button>
-        <a href="index.html" class="user-dropdown-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg> Submit a Report</a>
-        <button class="user-dropdown-item danger" id="logoutBtn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Sign Out</button>
+        <button class="user-dropdown-item" id="editProfileBtn"><svg xmlns="http://www.w3.org/2000/svg" width="16"
+            height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg> Edit Profile</button>
+        <a href="index.html" class="user-dropdown-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg> Submit a Report</a>
+        <button class="user-dropdown-item danger" id="logoutBtn"><svg xmlns="http://www.w3.org/2000/svg" width="16"
+            height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg> Sign Out</button>
       </div>
     </div>
   </header>
@@ -301,7 +451,11 @@
       <h1 class="welcome-text" id="welcomeText">Welcome back!</h1>
       <p class="welcome-sub">Manage your facility issue reports from here. Need to report something new?</p>
       <a href="index.html" class="submit-cta">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Submit a New Issue Report
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg> Submit a New Issue Report
       </a>
     </div>
 
@@ -372,7 +526,8 @@
         <div class="modal-form">
           <div class="form-group">
             <label class="form-label" for="editIssueId">Issue ID</label>
-            <input type="text" id="editIssueId" class="form-input" readonly style="background:var(--gray-50);cursor:not-allowed;">
+            <input type="text" id="editIssueId" class="form-input" readonly
+              style="background:var(--gray-50);cursor:not-allowed;">
           </div>
           <div class="form-group">
             <label class="form-label" for="editCategory">Category</label>
@@ -385,6 +540,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button class="btn btn-danger" id="reportDeleteBtn" style="margin-right: auto;">Delete Report</button>
         <button class="btn btn-secondary" id="reportCancelBtn">Cancel</button>
         <button class="btn btn-primary" id="reportSaveBtn">Save Changes</button>
       </div>
@@ -394,7 +550,7 @@
   <script type="module">
     import { checkAuth } from '../js/auth-guard.js';
     import { TENANTS, CATEGORIES, STATUS_LIST, getTenantById, getCategoryLabel } from '../js/mock-data.js';
-    import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast } from '../js/shared.js';
+    import { loadIssues, updateIssue, deleteIssue, formatDate, formatRelativeTime, showToast } from '../js/shared.js';
 
     // ===== Auth Guard =====
     if (!checkAuth('tenant')) {
@@ -403,7 +559,7 @@
 
     // ===== Session =====
     let currentUser = null;
-    try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+    try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
     if (!currentUser || currentUser.role !== 'tenant') {
       window.location.replace('../index.html');
       throw new Error('Not authenticated');
@@ -553,6 +709,7 @@
       container.querySelectorAll('[data-edit-issue]').forEach(btn => {
         btn.addEventListener('click', () => openEditReportModal(btn.dataset.editIssue));
       });
+
     }
 
     renderDashboard();
@@ -676,7 +833,17 @@
     document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
     document.getElementById('reportCancelBtn').addEventListener('click', closeReportModal);
     document.getElementById('reportSaveBtn').addEventListener('click', saveReport);
+    document.getElementById('reportDeleteBtn').addEventListener('click', () => {
+      if (!editingIssueId) return;
+      if (confirm(`Are you sure you want to delete report ${editingIssueId}? This action cannot be undone.`)) {
+        deleteIssue(editingIssueId);
+        closeReportModal();
+        showToast(`Report ${editingIssueId} deleted successfully.`, 'success');
+        renderDashboard();
+      }
+    });
     reportOverlay.addEventListener('click', (e) => { if (e.target === reportOverlay) closeReportModal(); });
   </script>
 </body>
+
 </html>
