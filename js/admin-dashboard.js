@@ -33,7 +33,7 @@ const STATUS_COLUMNS = ['awaiting_review', 'in_progress', 'resolved'];
 
 /* ---------- Bootstrap ---------- */
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initDashboard() {
   try {
     issues = await loadIssues();
   } catch (err) {
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindEvents();
   startAutoRefresh();
   personalizeTopbar();
-});
+}
 
 /* ==========================================================
    RBAC — Role-Based Access Control
@@ -338,7 +338,7 @@ function handleDragLeave(e) {
   }
 }
 
-function handleDrop(e) {
+async function handleDrop(e) {
   e.preventDefault();
   const body = e.currentTarget;
   body.classList.remove('drag-over');
@@ -508,8 +508,8 @@ function openIssueDetail(issueId) {
         ${issue.validated ? '<span class="badge badge-success">✓ Validated</span>' : '<span class="badge badge-warning">Pending Review</span>'}
       </div>
       ${issue.storeName
-        ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(issue.storeName)}${issue.contactPerson ? ' • ' + escapeHtml(issue.contactPerson) : ''}${issue.phoneNumber ? ' • ' + escapeHtml(issue.phoneNumber) : ''}</div>`
-        : ''
+      ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(issue.storeName)}${issue.contactPerson ? ' • ' + escapeHtml(issue.contactPerson) : ''}${issue.phoneNumber ? ' • ' + escapeHtml(issue.phoneNumber) : ''}</div>`
+      : ''
     }
     </div>
 
@@ -668,7 +668,7 @@ function bindEvents() {
       e.preventDefault();
       try {
         await supabase.auth.signOut();
-      } catch (err) {}
+      } catch (err) { }
       sessionStorage.removeItem('firs_user');
       window.location.replace('../index.html');
     });
@@ -689,3 +689,6 @@ function startAutoRefresh() {
     updateHITLBadge();
   }, 30000);
 }
+
+/* ---------- Init ---------- */
+await initDashboard();
