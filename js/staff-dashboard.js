@@ -305,7 +305,6 @@ function openIssueDetail(issueId) {
   if (!issue) return;
 
   const priorityInfo = getPriorityInfo(issue.aiPriorityLevel);
-  const isAssignedToMe = issue.assignedTo === currentUser?.id;
 
   const bodyHTML = `
     <div style="display:flex; flex-direction:column; gap: var(--sp-4);">
@@ -347,10 +346,7 @@ function openIssueDetail(issueId) {
           <option value="in_progress" ${issue.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
           <option value="resolved" ${issue.status === 'resolved' ? 'selected' : ''}>Resolved</option>
         </select>
-        <div style="display:flex; gap:var(--sp-2); flex-wrap:wrap;">
-          ${!isAssignedToMe ? `<button class="btn btn-secondary" id="so-claim-btn" style="flex:1;">Claim Issue</button>` : ''}
-          <button class="btn btn-primary" id="so-save-btn" style="flex:2;">Save Changes</button>
-        </div>
+        <button class="btn btn-primary w-full" id="so-save-btn">Save Changes</button>
       </div>
     </div>
   `;
@@ -371,22 +367,7 @@ function openIssueDetail(issueId) {
     }
   });
 
-  const claimBtn = panel.querySelector('#so-claim-btn');
-  if (claimBtn) {
-    claimBtn.addEventListener('click', async () => {
-      try {
-        await updateIssue(issue.id, { assignedTo: currentUser.id, status: 'in_progress' });
-        issue.assignedTo = currentUser.id;
-        issue.status = 'in_progress';
-        showToast('Issue claimed and set to In Progress!', 'success');
-        closeSlideOver();
-        renderKPIs();
-        renderCurrentView();
-      } catch (err) {
-        showToast('Failed to claim issue.', 'error');
-      }
-    });
-  }
+
 }
 
 /* ==========================================================
