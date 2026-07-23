@@ -65,6 +65,15 @@
             </svg></span> Manage Users
         </a>
       </nav>
+      <script>
+        (function() {
+          var c = sessionStorage.getItem('firs_badge_count');
+          if (c !== null) {
+            var b = document.getElementById('hitl-badge');
+            if (b) { b.textContent = c; b.style.display = +c > 0 ? '' : 'none'; }
+          }
+        })();
+      </script>
 
       <div class="sidebar-footer">
         <a href="#" id="edit-profile-link" style="margin-bottom: var(--sp-3);"><span class="link-icon"><svg

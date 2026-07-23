@@ -147,6 +147,7 @@ function setTrend(id, value, label, isUpBad) {
 
 function updateHITLBadge() {
   const count = issues.filter(i => i.validated === false && i.status !== 'resolved').length;
+  sessionStorage.setItem('firs_badge_count', count);
   const badge = document.getElementById('hitl-badge');
   if (badge) {
     badge.textContent = count;
@@ -352,11 +353,13 @@ async function handleDrop(e) {
   if (!issue || issue.status === newStatus) return;
 
   // Update issue status
-  issues = await updateIssue(issueId, { status: newStatus });
+  const updatedIssue = await updateIssue(issueId, { status: newStatus });
+  const idx = issues.findIndex(i => i.id === issueId);
+  if (idx !== -1) issues[idx] = updatedIssue;
   renderKanban();
   renderKPIs();
   updateHITLBadge();
-  showToast(`${issueId} moved to ${getStatusInfo(newStatus).label}`, 'success');
+  showToast(`${issue.ticketNumber || issueId} moved to ${getStatusInfo(newStatus).label}`, 'success');
 }
 
 /* ==========================================================
@@ -569,16 +572,18 @@ function openIssueDetail(issueId) {
       const newAssign = panel.querySelector('#detail-assign').value || null;
       const newStatus = panel.querySelector('#detail-status').value;
 
-      issues = await updateIssue(issue.id, {
+      const updatedIssue = await updateIssue(issue.id, {
         assignedTo: newAssign,
         status: newStatus,
       });
+      const idx = issues.findIndex(i => i.id === issue.id);
+      if (idx !== -1) issues[idx] = updatedIssue;
 
       closeSlideOver();
       renderKPIs();
       renderCurrentView();
       updateHITLBadge();
-      showToast(`${issue.id} updated successfully`, 'success');
+      showToast(`${issue.ticketNumber || issue.id} updated successfully`, 'success');
     });
   }
 }

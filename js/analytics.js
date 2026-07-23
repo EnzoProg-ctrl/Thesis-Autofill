@@ -547,6 +547,19 @@ async function renderStatusDist() {
   );
 }
 
+/* ---------- HITL Badge ---------- */
+
+async function updateHITLBadge() {
+  const issues = await loadIssues();
+  const count = issues.filter(i => i.validated === false && i.status !== 'resolved').length;
+  sessionStorage.setItem('firs_badge_count', count);
+  const badge = document.getElementById('hitl-badge');
+  if (badge) {
+    badge.textContent = count;
+    badge.style.display = count > 0 ? '' : 'none';
+  }
+}
+
 /* ---------- Render Everything ---------- */
 
 async function renderAll(range) {
@@ -679,4 +692,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   initExportButtons();
   initSidebarToggle();
   await renderAll(activeRange);
+  await updateHITLBadge();
 });
