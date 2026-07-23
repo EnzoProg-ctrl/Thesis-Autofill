@@ -2,12 +2,13 @@
    HITL (Human-in-the-Loop) Validation — JS Module
    ============================================================ */
 
+import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
 import { loadIssues, updateIssue, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, TENANTS, getTenantById, getCategoryLabel, getCategoryIcon, getPriorityInfo } from './mock-data.js';
+import { CATEGORIES, getCategoryLabel, getCategoryIcon, getPriorityInfo, getUsers } from './mock-data.js';
 
 /* ---------- Auth Guard ---------- */
-if (!checkAuth('admin')) {
+if (!(await checkAuth('admin'))) {
   throw new Error('Not authenticated');
 }
 
@@ -33,7 +34,7 @@ const statAvgConfEl = document.getElementById('stat-avg-conf');
 const statTodayEl = document.getElementById('stat-today');
 
 /* ---------- Init ---------- */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyRBAC();
   initSidebarToggle();
 
@@ -57,12 +58,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  refresh();
+  // Sign out link
+  const signOutLink = document.querySelector('#sign-out-link') || document.querySelector('a[onclick*="sessionStorage.removeItem"]');
+  if (signOutLink) {
+    signOutLink.removeAttribute('onclick');
+    signOutLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await supabase.auth.signOut(); } catch (err) {}
+      sessionStorage.removeItem('firs_user');
+      window.location.replace('../index.html');
+    });
+  }
+
+  await refresh();
 });
 
 /* ---------- Refresh all data ---------- */
-function refresh() {
-  allIssues = loadIssues();
+async function refresh() {
+  allIssues = await loadIssues();
   unvalidated = allIssues.filter(i => i.validated === false && i.status !== 'resolved');
   renderCards();
   updateStats();
@@ -85,12 +98,9 @@ function renderCards() {
   }
 
   reviewContainer.innerHTML = unvalidated.map((issue, idx) => {
-    const tenant = getTenantById(issue.tenantId);
-    const tenantName = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || 'Unknown Tenant');
-    const tenantFloor = tenant ? tenant.floor : '—';
-    const tenantZone = tenant ? tenant.zone : '';
-    const tenantContact = tenant ? (tenant.contact || '') : (issue.contactPerson || '');
-    const tenantPhone = tenant ? (tenant.phone || '') : (issue.phoneNumber || '');
+    const tenantName = escapeHtml(issue.storeName || 'Unknown Tenant');
+    const tenantContact = issue.contactPerson || '';
+    const tenantPhone = issue.phoneNumber || '';
     const submittedAgo = formatRelativeTime(issue.submittedAt);
 
     const aiCatLabel = getCategoryLabel(issue.aiCategory);
@@ -118,19 +128,15 @@ function renderCards() {
 
     // Build tenant meta string
     let tenantMetaStr = '';
-    if (tenant) {
-      tenantMetaStr = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>${tenantFloor}${tenantZone ? ', Zone ' + tenantZone : ''}`;
-    } else {
-      const parts = [];
-      if (tenantContact) parts.push(escapeHtml(tenantContact));
-      if (tenantPhone) parts.push(escapeHtml(tenantPhone));
-      tenantMetaStr = parts.length > 0 ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>` + parts.join(' • ') : '';
-    }
+    const parts = [];
+    if (tenantContact) parts.push(escapeHtml(tenantContact));
+    if (tenantPhone) parts.push(escapeHtml(tenantPhone));
+    tenantMetaStr = parts.length > 0 ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>` + parts.join(' • ') : '';
 
     return `
       <div class="hitl-card" id="card-${issue.id}" data-issue-id="${issue.id}">
         <div class="hitl-card-header">
-          <span class="issue-id">${escapeHtml(issue.id)}</span>
+          <span class="issue-id">${escapeHtml(issue.ticketNumber || issue.id)}</span>
           <span class="badge badge-warning">Awaiting Validation</span>
         </div>
         <div class="hitl-card-body">
@@ -283,26 +289,26 @@ function attachCardListeners() {
 
 
 /* ---------- Agree with AI ---------- */
-function handleAgree(issueId) {
+async function handleAgree(issueId) {
   const issue = allIssues.find(i => i.id === issueId);
   if (!issue) return;
 
-  updateIssue(issueId, {
+  await updateIssue(issueId, {
     validated: true,
-    validatedBy: 'Admin',
+    validatedBy: currentUser ? currentUser.id : 'Admin',
     validatedAt: new Date().toISOString(),
     overridden: false,
   });
 
   animateCardOut(issueId, () => {
-    showToast(`✓ ${issueId} validated — AI classification agreed`, 'success');
+    showToast(`✓ ${issue.ticketNumber || issueId} validated — AI classification agreed`, 'success');
     refresh();
   });
 }
 
 
 /* ---------- Override & Validate ---------- */
-function handleOverride(issueId) {
+async function handleOverride(issueId) {
   const issue = allIssues.find(i => i.id === issueId);
   if (!issue) return;
 
@@ -318,9 +324,9 @@ function handleOverride(issueId) {
 
   const wasOverridden = (newCategory !== issue.aiCategory) || (newPriority !== issue.aiPriorityLevel);
 
-  updateIssue(issueId, {
+  await updateIssue(issueId, {
     validated: true,
-    validatedBy: 'Admin',
+    validatedBy: currentUser ? currentUser.id : 'Admin',
     validatedAt: new Date().toISOString(),
     overridden: wasOverridden,
     overrideNotes: notes || null,
@@ -331,9 +337,9 @@ function handleOverride(issueId) {
 
   animateCardOut(issueId, () => {
     if (wasOverridden) {
-      showToast(`${issueId} validated with expert override`, 'info');
+      showToast(`${issue.ticketNumber || issueId} validated with expert override`, 'info');
     } else {
-      showToast(`✓ ${issueId} validated — matches AI classification`, 'success');
+      showToast(`✓ ${issue.ticketNumber || issueId} validated — matches AI classification`, 'success');
     }
     refresh();
   });
@@ -383,8 +389,8 @@ function animateCardOut(issueId, callback) {
 
 
 /* ---------- Update validation statistics ---------- */
-function updateStats() {
-  allIssues = loadIssues();
+async function updateStats() {
+  allIssues = await loadIssues();
   const validated = allIssues.filter(i => i.validated === true);
   const totalValidated = validated.length;
 

@@ -547,13 +547,17 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script type="module">
     import { checkAuth } from '../js/auth-guard.js';
-    import { TENANTS, CATEGORIES, STATUS_LIST, getTenantById, getCategoryLabel } from '../js/mock-data.js';
+    import { CATEGORIES, STATUS_LIST, getCategoryLabel } from '../js/mock-data.js';
     import { loadIssues, updateIssue, deleteIssue, formatDate, formatRelativeTime, showToast } from '../js/shared.js';
+    import { supabase } from '../js/supabase-client.js';
+
+    (async () => {
 
     // ===== Auth Guard =====
-    if (!checkAuth('tenant')) {
+    if (!await checkAuth('tenant')) {
       throw new Error('Not authenticated');
     }
 
@@ -597,38 +601,21 @@
     });
 
     // ===== Logout =====
-    document.getElementById('logoutBtn').addEventListener('click', () => {
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
       sessionStorage.removeItem('firs_user');
       window.location.replace('../index.html');
     });
 
     // ===== Resolve Tenant ID =====
-    const userEmail = currentUser.email.toLowerCase();
-    let resolvedTenantId = currentUser.tenantId || null;
-
-    if (!resolvedTenantId) {
-      const registeredTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-      const regMatch = registeredTenants.find(t => t.email && t.email.toLowerCase() === userEmail);
-      if (regMatch) resolvedTenantId = regMatch.id;
-    }
-    if (!resolvedTenantId) {
-      const sessionName = (currentUser.storeName || currentUser.name || '').toLowerCase();
-      if (sessionName) {
-        const builtInMatch = TENANTS.find(t => t.name.toLowerCase() === sessionName);
-        if (builtInMatch) resolvedTenantId = builtInMatch.id;
-      }
-    }
+    // The current user ID is the auth UUID, which matches the tenant_id in the database
+    let resolvedTenantId = currentUser.id;
 
     // ==========================================================
     //  RENDER ISSUES TABLE
     // ==========================================================
 
-    function renderDashboard() {
-      const allIssues = loadIssues();
-      const myIssues = resolvedTenantId
-        ? allIssues.filter(issue => issue.tenantId === resolvedTenantId)
-        : [];
-
+    function renderDashboard(myIssues) {
       // Status Counts
       const awaitingCount = myIssues.filter(i =>
         i.status === 'new' || i.status === 'ai_processing' || i.status === 'awaiting_review'
@@ -668,6 +655,8 @@
         const statusText = statusLabels[issue.status] || issue.status;
         const preview = issue.text.length > 80 ? issue.text.substring(0, 80) + '...' : issue.text;
         const dateStr = formatDate(issue.submittedAt);
+        // Use ticketNumber or id
+        const displayId = issue.ticketNumber || issue.id;
 
         // Actions column: only editable if awaiting_review
         let actionCell;
@@ -679,7 +668,7 @@
 
         return `
           <tr>
-            <td><strong>${issue.id}</strong></td>
+            <td><strong>${displayId}</strong></td>
             <td class="report-text-preview" title="${issue.text.replace(/"/g, '&quot;')}">${escapeHtml(preview)}</td>
             <td class="hide-mobile">${category}</td>
             <td>${dateStr}</td>
@@ -712,7 +701,14 @@
 
     }
 
-    renderDashboard();
+    async function refreshDashboard() {
+      const allIssues = await loadIssues();
+      const myIssues = allIssues.filter(i => i.tenantId === currentUser.id);
+      renderDashboard(myIssues);
+    }
+
+    await refreshDashboard();
+
 
     // ==========================================================
     //  EDIT PROFILE
@@ -735,7 +731,7 @@
       profileOverlay.style.display = 'none';
     }
 
-    function saveProfile() {
+    async function saveProfile() {
       const newName = editStoreNameInput.value.trim();
       const newContact = editContactInput.value.trim();
       const newPhone = editPhoneInput.value.trim();
@@ -746,22 +742,28 @@
         return;
       }
 
+      // Update in Supabase
+      const { error } = await supabase
+        .from('tenants')
+        .update({
+          store_name: newName,
+          contact_person: newContact,
+          phone_number: newPhone
+        })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        showToast('Failed to update profile.', 'error');
+        console.error(error);
+        return;
+      }
+
       // Update sessionStorage
       currentUser.storeName = newName;
       currentUser.name = newName;
       currentUser.contact = newContact;
       currentUser.phone = newPhone;
       sessionStorage.setItem('firs_user', JSON.stringify(currentUser));
-
-      // Sync to localStorage registered tenants
-      const registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-      const idx = registered.findIndex(t => t.email && t.email.toLowerCase() === userEmail);
-      if (idx !== -1) {
-        registered[idx].name = newName;
-        registered[idx].contact = newContact;
-        registered[idx].phone = newPhone;
-        localStorage.setItem('firs_registered_tenants', JSON.stringify(registered));
-      }
 
       // Update UI immediately
       updateUserUI();
@@ -793,13 +795,13 @@
       editCategorySelect.appendChild(opt);
     });
 
-    function openEditReportModal(issueId) {
-      const allIssues = loadIssues();
+    async function openEditReportModal(issueId) {
+      const allIssues = await loadIssues();
       const issue = allIssues.find(i => i.id === issueId);
       if (!issue) return;
 
       editingIssueId = issueId;
-      editIssueIdInput.value = issue.id;
+      editIssueIdInput.value = issue.ticketNumber || issue.id;
       editCategorySelect.value = issue.category || issue.aiCategory || '';
       editDescriptionArea.value = issue.text || '';
       reportOverlay.style.display = 'flex';
@@ -810,7 +812,7 @@
       editingIssueId = null;
     }
 
-    function saveReport() {
+    async function saveReport() {
       if (!editingIssueId) return;
 
       const newCategory = editCategorySelect.value;
@@ -819,7 +821,7 @@
       if (!newCategory) { showToast('Please select a category.', 'error'); return; }
       if (newText.length < 10) { showToast('Description must be at least 10 characters.', 'error'); return; }
 
-      updateIssue(editingIssueId, {
+      await updateIssue(editingIssueId, {
         category: newCategory,
         text: newText,
         updatedAt: new Date().toISOString(),
@@ -827,22 +829,24 @@
 
       closeReportModal();
       showToast('Report updated successfully!', 'success');
-      renderDashboard();
+      await refreshDashboard();
     }
 
     document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
     document.getElementById('reportCancelBtn').addEventListener('click', closeReportModal);
     document.getElementById('reportSaveBtn').addEventListener('click', saveReport);
-    document.getElementById('reportDeleteBtn').addEventListener('click', () => {
+    document.getElementById('reportDeleteBtn').addEventListener('click', async () => {
       if (!editingIssueId) return;
-      if (confirm(`Are you sure you want to delete report ${editingIssueId}? This action cannot be undone.`)) {
-        deleteIssue(editingIssueId);
+      if (confirm(`Are you sure you want to delete this report? This action cannot be undone.`)) {
+        await deleteIssue(editingIssueId);
         closeReportModal();
-        showToast(`Report ${editingIssueId} deleted successfully.`, 'success');
-        renderDashboard();
+        showToast(`Report deleted successfully.`, 'success');
+        await refreshDashboard();
       }
     });
     reportOverlay.addEventListener('click', (e) => { if (e.target === reportOverlay) closeReportModal(); });
+
+    })(); // End of async IIFE
   </script>
 </body>
 

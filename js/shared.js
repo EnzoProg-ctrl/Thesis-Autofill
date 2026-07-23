@@ -1,68 +1,148 @@
 /* ============================================================
-   Shared Utilities — Navigation, Toast, Storage, Helpers
+   Shared Utilities — Supabase Data Ops, Navigation, Toast, Helpers
    ============================================================ */
 
-import { SAMPLE_ISSUES, getUsers } from './mock-data.js';
+import { supabase } from './supabase-client.js';
+import { getUsers } from './mock-data.js';
 
-/* ---------- LocalStorage Persistence ---------- */
+/* ---------- Supabase Issue Operations (async) ---------- */
 
-const STORAGE_KEY = 'nepomall_issues_v2';
-
-export function loadIssues() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch (e) { /* ignore */ }
-  // Initialize with sample data on first load
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE_ISSUES));
-  return [...SAMPLE_ISSUES];
-}
-
-export function saveIssues(issues) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(issues));
-}
-
-export function addIssue(issue) {
-  const issues = loadIssues();
-  issues.unshift(issue);
-  saveIssues(issues);
-  return issues;
-}
-
-export function updateIssue(issueId, updates) {
-  const issues = loadIssues();
-  const idx = issues.findIndex(i => i.id === issueId);
-  if (idx !== -1) {
-    issues[idx] = { ...issues[idx], ...updates, updatedAt: new Date().toISOString() };
-    saveIssues(issues);
+export async function loadIssues() {
+  const { data, error } = await supabase
+    .from('issues')
+    .select('*')
+    .order('submitted_at', { ascending: false });
+  if (error) {
+    console.error('loadIssues error:', error);
+    return [];
   }
-  return issues;
+  // Map DB column names → legacy JS property names for compatibility
+  return data.map(mapIssueFromDB);
 }
 
-export function deleteIssue(issueId) {
-  const issues = loadIssues();
-  const filtered = issues.filter(i => i.id !== issueId);
-  saveIssues(filtered);
-  return filtered;
+export async function addIssue(issue) {
+  const dbRow = mapIssueToDB(issue);
+  const { data, error } = await supabase
+    .from('issues')
+    .insert(dbRow)
+    .select()
+    .single();
+  if (error) {
+    console.error('addIssue error:', error);
+    throw error;
+  }
+  return mapIssueFromDB(data);
 }
 
-/* ---------- ID Generator ---------- */
+export async function updateIssue(issueId, updates) {
+  const dbUpdates = {};
+  // Map JS keys → DB column names
+  if ('status' in updates) dbUpdates.status = updates.status;
+  if ('assignedTo' in updates) dbUpdates.assigned_to = updates.assignedTo;
+  if ('category' in updates) dbUpdates.category = updates.category;
+  if ('text' in updates) dbUpdates.text = updates.text;
+  if ('validated' in updates) dbUpdates.validated = updates.validated;
+  if ('validatedBy' in updates) dbUpdates.validated_by = updates.validatedBy;
+  if ('validatedAt' in updates) dbUpdates.validated_at = updates.validatedAt;
+  if ('overridden' in updates) dbUpdates.overridden = updates.overridden;
+  if ('overrideNotes' in updates) dbUpdates.override_notes = updates.overrideNotes;
+  if ('aiCategory' in updates) dbUpdates.ai_category = updates.aiCategory;
+  if ('aiPriorityLevel' in updates) dbUpdates.ai_priority_level = updates.aiPriorityLevel;
 
-export function generateId() {
-  const issues = loadIssues();
-  const num = issues.length + 1;
-  return `ISS-${String(num).padStart(3, '0')}`;
+  const { data, error } = await supabase
+    .from('issues')
+    .update(dbUpdates)
+    .eq('id', issueId)
+    .select()
+    .single();
+  if (error) {
+    console.error('updateIssue error:', error);
+    throw error;
+  }
+  return mapIssueFromDB(data);
+}
+
+export async function deleteIssue(issueId) {
+  const { error } = await supabase
+    .from('issues')
+    .delete()
+    .eq('id', issueId);
+  if (error) {
+    console.error('deleteIssue error:', error);
+    throw error;
+  }
+}
+
+
+/* ---------- Field Mapping Helpers ---------- */
+
+/**
+ * Maps a Supabase DB row → legacy JS issue object
+ * so existing UI code works without changes.
+ */
+function mapIssueFromDB(row) {
+  return {
+    id: row.id,
+    ticketNumber: row.ticket_number,
+    tenantId: row.tenant_id,
+    storeName: row.store_name || '',
+    contactPerson: row.contact_person || '',
+    phoneNumber: row.phone_number || '',
+    category: row.category,
+    text: row.text,
+    imageUrl: row.image_url,
+    status: row.status,
+    assignedTo: row.assigned_to,
+    aiCategory: row.ai_category,
+    aiConfidence: row.ai_confidence,
+    aiPriority: row.ai_priority_score,
+    aiPriorityLevel: row.ai_priority_level,
+    aiLanguage: row.ai_language,
+    validated: row.validated,
+    validatedBy: row.validated_by,
+    validatedAt: row.validated_at,
+    overridden: row.overridden,
+    overrideNotes: row.override_notes,
+    submittedAt: row.submitted_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * Maps a JS issue object → Supabase DB column names for INSERT.
+ */
+function mapIssueToDB(issue) {
+  const row = {};
+  if (issue.tenantId) row.tenant_id = issue.tenantId;
+  if (issue.storeName) row.store_name = issue.storeName;
+  if (issue.contactPerson) row.contact_person = issue.contactPerson;
+  if (issue.phoneNumber) row.phone_number = issue.phoneNumber;
+  if (issue.category) row.category = issue.category;
+  if (issue.text) row.text = issue.text;
+  if (issue.imageUrl) row.image_url = issue.imageUrl;
+  if (issue.status) row.status = issue.status;
+  if (issue.assignedTo) row.assigned_to = issue.assignedTo;
+  if (issue.aiCategory) row.ai_category = issue.aiCategory;
+  if (issue.aiConfidence != null) row.ai_confidence = issue.aiConfidence;
+  if (issue.aiPriority != null) row.ai_priority_score = issue.aiPriority;
+  if (issue.aiPriorityLevel) row.ai_priority_level = issue.aiPriorityLevel;
+  if (issue.aiLanguage) row.ai_language = issue.aiLanguage;
+  if (issue.validated != null) row.validated = issue.validated;
+
+  return row;
 }
 
 
 /* ---------- Date / Time Formatting ---------- */
 
 export function formatDate(isoString) {
+  if (!isoString) return '—';
   const d = new Date(isoString);
   return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export function formatDateTime(isoString) {
+  if (!isoString) return '—';
   const d = new Date(isoString);
   return d.toLocaleDateString('en-PH', {
     year: 'numeric', month: 'short', day: 'numeric',
@@ -71,6 +151,7 @@ export function formatDateTime(isoString) {
 }
 
 export function formatRelativeTime(isoString) {
+  if (!isoString) return '—';
   const now = new Date();
   const then = new Date(isoString);
   const diffMs = now - then;
@@ -139,7 +220,6 @@ export function showModal(title, bodyHTML, footerHTML = '') {
     </div>
   `;
 
-  // Close on overlay click or X button
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || e.target.closest('.modal-close-btn')) {
       overlay.remove();
@@ -191,6 +271,7 @@ export function closeSlideOver() {
 /* ---------- Escape HTML ---------- */
 
 export function escapeHtml(str) {
+  if (!str) return '';
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
@@ -206,6 +287,25 @@ export function debounce(fn, ms = 300) {
     timer = setTimeout(() => fn(...args), ms);
   };
 }
+
+
+/* ---------- Password Toggle Helper ---------- */
+
+const EYE_OPEN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+const EYE_OFF_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path></svg>';
+
+function setupPasswordToggle(overlay, inputId, toggleId) {
+  const toggleBtn = overlay.querySelector(`#${toggleId}`);
+  const pwInput = overlay.querySelector(`#${inputId}`);
+  if (!toggleBtn || !pwInput) return;
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = pwInput.type === 'password';
+    pwInput.type = isHidden ? 'text' : 'password';
+    toggleBtn.innerHTML = isHidden ? EYE_OFF_SVG : EYE_OPEN_SVG;
+    toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+  });
+}
+
 
 /* ---------- User Creation Modal (Globalized) ---------- */
 
@@ -223,9 +323,9 @@ export function openCreateUserModal() {
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label" for="newUserPassword">Password <span style="color:var(--danger-500)">*</span></label>
         <div class="password-wrapper">
-          <input type="password" id="newUserPassword" class="form-input" placeholder="Min. 4 characters">
+          <input type="password" id="newUserPassword" class="form-input" placeholder="Min. 6 characters">
           <button type="button" class="password-toggle" id="toggleNewUserPw" aria-label="Show password">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            ${EYE_OPEN_SVG}
           </button>
         </div>
       </div>
@@ -267,22 +367,13 @@ export function openCreateUserModal() {
   roleSelect.addEventListener('change', toggleTradeVisibility);
 
   // Password toggle
-  const togglePwBtn = overlay.querySelector('#toggleNewUserPw');
-  const pwInput = overlay.querySelector('#newUserPassword');
-  const eyeOpenSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
-  const eyeOffSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path></svg>';
-  togglePwBtn.addEventListener('click', () => {
-    const isHidden = pwInput.type === 'password';
-    pwInput.type = isHidden ? 'text' : 'password';
-    togglePwBtn.innerHTML = isHidden ? eyeOffSVG : eyeOpenSVG;
-    togglePwBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
-  });
+  setupPasswordToggle(overlay, 'newUserPassword', 'toggleNewUserPw');
 
   // Cancel
   overlay.querySelector('#createUserCancel').addEventListener('click', closeModal);
 
-  // Save
-  overlay.querySelector('#createUserSave').addEventListener('click', () => {
+  // Save — Create user via Supabase Auth + profiles table
+  overlay.querySelector('#createUserSave').addEventListener('click', async () => {
     const name = overlay.querySelector('#newUserName').value.trim();
     const email = overlay.querySelector('#newUserEmail').value.trim().toLowerCase();
     const password = overlay.querySelector('#newUserPassword').value;
@@ -292,53 +383,67 @@ export function openCreateUserModal() {
     // Validation
     if (!name) { showToast('Please enter a name.', 'error'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email.', 'error'); return; }
-    if (!password || password.length < 4) { showToast('Password must be at least 4 characters.', 'error'); return; }
+    if (!password || password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
 
-    // Check for duplicate email
-    const existingUsers = getUsers();
-    if (existingUsers.find(u => u.email.toLowerCase() === email)) {
-      showToast('A user with this email already exists.', 'error');
-      return;
+    const saveBtn = overlay.querySelector('#createUserSave');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Creating...';
+
+    try {
+      // 1. Save current admin session
+      const { data: { session: adminSession } } = await supabase.auth.getSession();
+
+      // 2. Sign up the new user via Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (signUpError) throw signUpError;
+
+      // 3. Restore admin session immediately
+      if (adminSession) {
+        await supabase.auth.setSession({
+          access_token: adminSession.access_token,
+          refresh_token: adminSession.refresh_token,
+        });
+      }
+
+      // 4. Avatar based on trade/role
+      const tradeAvatars = {
+        'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
+        'General': 'GN', 'Security': 'SC'
+      };
+      const avatar = role === 'staff' ? (tradeAvatars[trade] || 'GN') : 'SA';
+
+      // 5. Insert into profiles table (via RPC to bypass RLS)
+      const { error: profileError } = await supabase.rpc('admin_create_profile', {
+        p_user_id: signUpData.user.id,
+        p_full_name: name,
+        p_email: email,
+        p_role: role,
+        p_trade: role === 'staff' ? trade : null,
+        p_avatar_initials: avatar,
+      });
+
+      if (profileError) throw profileError;
+
+      closeModal();
+      showToast(`Account created for ${name} (${role})`, 'success');
+
+    } catch (err) {
+      console.error('Create user error:', err);
+      showToast(err.message || 'Failed to create account.', 'error');
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Create Account';
     }
-
-    // Generate unique ID
-    const maxNum = existingUsers.reduce((max, u) => {
-      const n = parseInt(u.id.replace(/\D/g, ''), 10);
-      return n > max ? n : max;
-    }, 0);
-    const newId = 'U' + String(maxNum + 1).padStart(2, '0');
-
-    // Avatar based on trade/role
-    const tradeAvatars = {
-      'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
-      'General': 'GN', 'Security': 'SC'
-    };
-    const avatar = role === 'staff' ? (tradeAvatars[trade] || 'GN') : 'SA';
-
-    const newUser = {
-      id: newId,
-      name: name,
-      email: email,
-      password: password,
-      role: role,
-      avatar: avatar,
-    };
-
-    if (role === 'staff') {
-      newUser.trade = trade;
-    }
-
-    existingUsers.push(newUser);
-    localStorage.setItem('firs_users', JSON.stringify(existingUsers));
-
-    closeModal();
-    showToast(`Account created for ${name} (${role})`, 'success');
   });
 }
 
+
 /* ---------- Edit Profile Modal (Globalized) ---------- */
 
-export function openEditAdminProfileModal() {
+export async function openEditAdminProfileModal() {
   const rawUser = sessionStorage.getItem('firs_user');
   if (!rawUser) return;
 
@@ -375,7 +480,7 @@ export function openEditAdminProfileModal() {
         <div class="password-wrapper">
           <input type="password" id="editProfilePassword" class="form-input" placeholder="Leave blank to keep current password">
           <button type="button" class="password-toggle" id="toggleEditProfilePw" aria-label="Show password">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            ${EYE_OPEN_SVG}
           </button>
         </div>
       </div>
@@ -391,22 +496,13 @@ export function openEditAdminProfileModal() {
   const overlay = showModal('Edit Profile', bodyHTML, footerHTML);
 
   // Password toggle
-  const epToggleBtn = overlay.querySelector('#toggleEditProfilePw');
-  const epPwInput = overlay.querySelector('#editProfilePassword');
-  const epEyeOpen = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
-  const epEyeOff = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path></svg>';
-  epToggleBtn.addEventListener('click', () => {
-    const isHidden = epPwInput.type === 'password';
-    epPwInput.type = isHidden ? 'text' : 'password';
-    epToggleBtn.innerHTML = isHidden ? epEyeOff : epEyeOpen;
-    epToggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
-  });
+  setupPasswordToggle(overlay, 'editProfilePassword', 'toggleEditProfilePw');
 
   // Cancel
   overlay.querySelector('#editProfileCancel').addEventListener('click', closeModal);
 
   // Save
-  overlay.querySelector('#editProfileSave').addEventListener('click', () => {
+  overlay.querySelector('#editProfileSave').addEventListener('click', async () => {
     const name = overlay.querySelector('#editProfileName').value.trim();
     const newPassword = overlay.querySelector('#editProfilePassword').value;
     const trade = isStaff ? overlay.querySelector('#editProfileTrade').value : null;
@@ -416,60 +512,52 @@ export function openEditAdminProfileModal() {
       return;
     }
 
-    // Retrieve firs_users array from localStorage
-    let users = [];
     try {
-      users = JSON.parse(localStorage.getItem('firs_users') || '[]');
-    } catch (e) {
-      users = [];
-    }
+      // Update profiles table in Supabase
+      const profileUpdates = { full_name: name };
+      if (isStaff && trade) {
+        profileUpdates.trade = trade;
+        const tradeAvatars = {
+          'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
+          'General': 'GN', 'Security': 'SC'
+        };
+        profileUpdates.avatar_initials = tradeAvatars[trade] || 'GN';
+      }
 
-    const idx = users.findIndex(u => u.id === currentUser.id);
-    if (idx === -1) {
-      showToast('User not found in storage.', 'error');
-      return;
-    }
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', currentUser.id);
 
-    // Update locally stored user
-    users[idx].name = name;
-    if (newPassword) {
-      users[idx].password = newPassword;
-    }
-    if (isStaff) {
-      users[idx].trade = trade;
-      // Avatar based on trade
-      const tradeAvatars = {
-        'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
-        'General': 'GN', 'Security': 'SC'
+      if (profileError) throw profileError;
+
+      // Update password via Supabase Auth if provided
+      if (newPassword) {
+        const { error: pwError } = await supabase.auth.updateUser({ password: newPassword });
+        if (pwError) throw pwError;
+      }
+
+      // Update session storage
+      const updatedUser = {
+        ...currentUser,
+        name: name,
+        avatar: profileUpdates.avatar_initials || currentUser.avatar || 'SA',
       };
-      users[idx].avatar = tradeAvatars[trade] || 'GN';
-    }
+      if (isStaff) updatedUser.trade = trade;
+      sessionStorage.setItem('firs_user', JSON.stringify(updatedUser));
 
-    localStorage.setItem('firs_users', JSON.stringify(users));
+      closeModal();
+      showToast('Profile updated successfully', 'success');
 
-    // Update session storage object
-    const updatedUser = {
-      ...currentUser,
-      name: name,
-      avatar: users[idx].avatar || currentUser.avatar || 'SA'
-    };
-    if (isStaff) {
-      updatedUser.trade = trade;
-    }
-    sessionStorage.setItem('firs_user', JSON.stringify(updatedUser));
+      // Update topbar UI
+      const avatarEl = document.querySelector('.topbar-avatar');
+      const nameEl = document.querySelector('.topbar-user span:last-child');
+      if (avatarEl) avatarEl.textContent = updatedUser.avatar || name.substring(0, 2);
+      if (nameEl) nameEl.textContent = name;
 
-    // Close modal & show toast
-    closeModal();
-    showToast('Profile updated successfully', 'success');
-
-    // Dynamically update the topbar UI
-    const avatarEl = document.querySelector('.topbar-avatar');
-    const nameEl = document.querySelector('.topbar-user span:last-child');
-    if (avatarEl) {
-      avatarEl.textContent = updatedUser.avatar || name.substring(0, 3);
-    }
-    if (nameEl) {
-      nameEl.textContent = name;
+    } catch (err) {
+      console.error('Edit profile error:', err);
+      showToast(err.message || 'Failed to update profile.', 'error');
     }
   });
 }

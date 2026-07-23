@@ -1,29 +1,30 @@
 /* ============================================================
-   Auth Guard — Shared authentication check for protected pages
+   Auth Guard — Supabase-backed authentication check
    ============================================================
    
    Import and call checkAuth() at the top of any protected page's
-   JS module. It will redirect unauthenticated users to the login
-   page immediately.
+   JS module. It verifies the Supabase session and syncs it with
+   sessionStorage for quick RBAC checks in the UI.
    
    Usage:
      import { checkAuth } from './auth-guard.js';
-     checkAuth('admin');   // For admin pages
-     checkAuth('tenant');  // For tenant pages
+     if (!await checkAuth('admin')) throw new Error('Not authenticated');
    ============================================================ */
 
+import { supabase } from './supabase-client.js';
+
 /**
- * Check if the user is authenticated and has the required role.
+ * Check if the user is authenticated via Supabase and has the required role.
+ * Falls back to sessionStorage for cached role info.
  * Redirects to the login page if not authenticated.
- * Also handles the browser back/forward cache (BFCache).
  *
- * @param {'admin'|'tenant'} [requiredRole] - Optional role check
- * @param {string} [loginUrl] - URL to redirect to (default: '../index.html')
+ * @param {'admin'|'staff'|'tenant'|Array<string>} [requiredRole] - Role check
+ * @param {string} [loginUrl] - Override redirect URL
+ * @returns {Promise<boolean>}
  */
-export function checkAuth(requiredRole, loginUrl) {
+export async function checkAuth(requiredRole, loginUrl) {
   // Determine the correct login URL based on current location
   if (!loginUrl) {
-    // Check if we're in a subdirectory (admin/ or tenant/)
     const path = window.location.pathname;
     if (path.includes('/admin/') || path.includes('/tenant/')) {
       loginUrl = '../index.html';
@@ -32,44 +33,95 @@ export function checkAuth(requiredRole, loginUrl) {
     }
   }
 
-  function doCheck() {
-    const raw = sessionStorage.getItem('firs_user');
-    if (!raw) {
-      window.location.replace(loginUrl);
-      return false;
+  // 1. Check Supabase session
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    // No Supabase session — clear local cache and redirect
+    sessionStorage.removeItem('firs_user');
+    window.location.replace(loginUrl);
+    return false;
+  }
+
+  // 2. Restore sessionStorage if missing (e.g., page refresh with valid Supabase token)
+  let cachedUser = null;
+  try {
+    cachedUser = JSON.parse(sessionStorage.getItem('firs_user'));
+  } catch (e) { /* ignore */ }
+
+  if (!cachedUser || cachedUser.id !== session.user.id) {
+    // Session exists but no cached user info — resolve role from DB
+    const userId = session.user.id;
+    const email = session.user.email;
+
+    // Check profiles (admin/staff)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profile) {
+      cachedUser = {
+        id: userId,
+        email: email,
+        name: profile.full_name,
+        role: profile.role,
+        trade: profile.trade,
+        avatar: profile.avatar_initials,
+      };
+    } else {
+      // Check tenants
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (tenant) {
+        cachedUser = {
+          id: userId,
+          email: email,
+          name: tenant.store_name,
+          storeName: tenant.store_name,
+          contact: tenant.contact_person,
+          phone: tenant.phone_number,
+          floor: tenant.floor,
+          role: 'tenant',
+          tenantId: userId,
+        };
+      } else {
+        // User exists in auth but not in profiles or tenants — redirect
+        sessionStorage.removeItem('firs_user');
+        window.location.replace(loginUrl);
+        return false;
+      }
     }
 
-    try {
-      const user = JSON.parse(raw);
+    sessionStorage.setItem('firs_user', JSON.stringify(cachedUser));
+  }
 
-      // If a specific role is required, verify it
-      if (requiredRole) {
-        const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-        if (!allowedRoles.includes(user.role)) {
-          window.location.replace(loginUrl);
-          return false;
-        }
-      }
-
-      return true;
-    } catch (e) {
-      // Corrupted session data — clear and redirect
-      sessionStorage.removeItem('firs_user');
+  // 3. Role check
+  if (requiredRole) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    // For admin pages, allow both 'admin' and 'staff'
+    if (allowedRoles.includes('admin') && !allowedRoles.includes('staff')) {
+      allowedRoles.push('staff');
+    }
+    if (!allowedRoles.includes(cachedUser.role)) {
       window.location.replace(loginUrl);
       return false;
     }
   }
 
-  // Immediate check on script load
-  if (!doCheck()) return false;
-
-  // Handle BFCache: when the user navigates back after signing out,
-  // the browser may restore the page from cache without re-running
-  // DOMContentLoaded. The 'pageshow' event fires in this case with
-  // event.persisted === true.
-  window.addEventListener('pageshow', function (event) {
+  // 4. Handle BFCache
+  window.addEventListener('pageshow', async function (event) {
     if (event.persisted) {
-      doCheck();
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) {
+        sessionStorage.removeItem('firs_user');
+        window.location.replace(loginUrl);
+      }
     }
   });
 

@@ -2,12 +2,13 @@
    Analytics Dashboard — Charts, KPIs, Time-Range Filtering
    ============================================================ */
 
+import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
 import { HISTORICAL_DATA, CATEGORIES, STATUS_LIST, getCategoryLabel } from './mock-data.js';
 import { loadIssues, showToast, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 
 /* ---------- Auth Guard ---------- */
-if (!checkAuth(['admin', 'staff'])) {
+if (!(await checkAuth(['admin', 'staff']))) {
   throw new Error('Not authenticated');
 }
 
@@ -492,8 +493,8 @@ function renderRecurring(range) {
 
 /* ---------- Chart 8: Issue Status Distribution — Doughnut ---------- */
 
-function renderStatusDist() {
-  const issues = loadIssues();
+async function renderStatusDist() {
+  const issues = await loadIssues();
   const statusCounts = {};
   for (const s of STATUS_LIST) {
     statusCounts[s.id] = 0;
@@ -548,7 +549,7 @@ function renderStatusDist() {
 
 /* ---------- Render Everything ---------- */
 
-function renderAll(range) {
+async function renderAll(range) {
   destroyAllCharts();
   renderKPIs(range);
   renderCategoryDoughnut(range);
@@ -558,7 +559,7 @@ function renderAll(range) {
   renderAiAccuracy(range);
   renderBudget();
   renderRecurring(range);
-  renderStatusDist();
+  await renderStatusDist();
 }
 
 /* ---------- Time Range Selector ---------- */
@@ -635,7 +636,7 @@ function applyRBAC() {
   if (nameEl) nameEl.textContent = currentUser.name || 'User';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyRBAC();
   
   // Resolve current user for event binding
@@ -662,8 +663,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Sign out link
+  const signOutLink = document.querySelector('a[onclick*="sessionStorage.removeItem"]');
+  if (signOutLink) {
+    signOutLink.removeAttribute('onclick');
+    signOutLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await supabase.auth.signOut(); } catch (err) {}
+      sessionStorage.removeItem('firs_user');
+      window.location.replace('../index.html');
+    });
+  }
+
   initTimeRange();
   initExportButtons();
   initSidebarToggle();
-  renderAll(activeRange);
+  await renderAll(activeRange);
 });

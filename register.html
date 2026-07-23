@@ -305,7 +305,10 @@
     </div>
   </div>
 
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+
     const form = document.getElementById('registerForm');
     const authError = document.getElementById('authError');
     const authErrorText = document.getElementById('authErrorText');
@@ -333,7 +336,7 @@
       else strengthFill.style.background = 'var(--success-500)';
     });
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
       e.preventDefault();
       authError.classList.remove('show');
 
@@ -361,50 +364,42 @@
         return showError('PMO accounts cannot be registered here. Contact administration.');
       }
 
-      // Check for duplicate email among existing registered tenants
-      const existingTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-      const duplicateEmail = existingTenants.find(function(t) {
-        return t.email && t.email.toLowerCase() === email;
-      });
-      if (duplicateEmail) {
-        return showError('An account with this email already exists. Please sign in instead.');
-      }
-
-      // Check if email matches the hardcoded admin account
-      if (email === 'admin@gmail.com') {
-        return showError('This email is reserved. Please use a different email.');
-      }
-
-      // Simulate registration
       registerBtn.disabled = true;
       registerBtn.textContent = 'Creating account...';
 
-      setTimeout(function() {
-        // Re-read to avoid race conditions (another tab might have registered)
-        const currentTenants = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-        const tenantId = 'T' + String(51 + currentTenants.length).padStart(3, '0');
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password
+      });
 
-        const newTenant = {
-          id: tenantId,
-          name: storeName,
+      if (error) {
+        registerBtn.disabled = false;
+        registerBtn.textContent = 'Create Tenant Account';
+        return showError(error.message);
+      }
+
+      if (data && data.user) {
+        const { error: insertError } = await supabase.from('tenants').insert({
+          id: data.user.id,
+          store_name: storeName,
           floor: floor,
-          contact: contact,
-          phone: phone,
-          email: email,
-          password: password,
-          type: 'Registered Store',
-          registeredAt: new Date().toISOString()
-        };
+          contact_person: contact,
+          phone_number: phone,
+          email: email
+        });
 
-        currentTenants.push(newTenant);
-        localStorage.setItem('firs_registered_tenants', JSON.stringify(currentTenants));
+        if (insertError) {
+          registerBtn.disabled = false;
+          registerBtn.textContent = 'Create Tenant Account';
+          return showError('Failed to create tenant profile: ' + insertError.message);
+        }
 
         // Show success
         form.style.display = 'none';
         authSuccess.classList.add('show');
         registerBtn.disabled = false;
         registerBtn.textContent = 'Create Tenant Account';
-      }, 1000);
+      }
     });
 
     function showError(msg) {

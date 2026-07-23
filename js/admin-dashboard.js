@@ -2,13 +2,14 @@
    Admin Dashboard — KPIs, Kanban, Table, Slide-Over, Filters
    ============================================================ */
 
+import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
 import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getTenantById, getCategoryLabel, getCategoryIcon, getStaffById, getStatusInfo, getPriorityInfo, getUsers } from './mock-data.js';
+import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './mock-data.js';
 
 /* ---------- Auth Guard ---------- */
 // Allow both admin and staff roles to access admin pages.
-if (!checkAuth(['admin', 'staff'])) {
+if (!(await checkAuth(['admin', 'staff']))) {
   throw new Error('Not authenticated');
 }
 
@@ -19,6 +20,7 @@ try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e)
 /* ---------- State ---------- */
 
 let issues = [];
+let staffMap = {};
 let currentView = 'kanban';          // 'kanban' | 'table'
 let sortColumn = 'submitted';
 let sortAsc = false;
@@ -31,8 +33,24 @@ const STATUS_COLUMNS = ['awaiting_review', 'in_progress', 'resolved'];
 
 /* ---------- Bootstrap ---------- */
 
-document.addEventListener('DOMContentLoaded', () => {
-  issues = loadIssues();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    issues = await loadIssues();
+  } catch (err) {
+    console.error('Issues load error:', err);
+    issues = [];
+    showToast('Failed to load issues: ' + err.message, 'error');
+  }
+
+  try {
+    const staffList = await getUsers();
+    if (staffList) {
+      staffList.forEach(s => staffMap[s.id] = s);
+    }
+  } catch (err) {
+    console.error('Staff load error:', err);
+  }
+
   applyRBAC();
   populateFilters();
   renderKPIs();
@@ -249,7 +267,6 @@ function renderKanban() {
 }
 
 function createKanbanCard(issue) {
-  const tenant = getTenantById(issue.tenantId);
   const priorityInfo = getPriorityInfo(issue.aiPriorityLevel);
 
   const card = document.createElement('div');
@@ -257,11 +274,11 @@ function createKanbanCard(issue) {
   card.draggable = true;
   card.dataset.issueId = issue.id;
 
-  const tenantDisplay = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || 'Unknown');
+  const tenantDisplay = escapeHtml(issue.storeName || 'Unknown');
 
   card.innerHTML = `
     <div class="kanban-card-header">
-      <span class="kanban-card-id">${escapeHtml(issue.id)}</span>
+      <span class="kanban-card-id">${escapeHtml(issue.ticketNumber || issue.id)}</span>
       <span class="priority-dot ${issue.aiPriorityLevel}"></span>
     </div>
     <div class="kanban-card-title">${escapeHtml(issue.text)}</div>
@@ -335,7 +352,7 @@ function handleDrop(e) {
   if (!issue || issue.status === newStatus) return;
 
   // Update issue status
-  issues = updateIssue(issueId, { status: newStatus });
+  issues = await updateIssue(issueId, { status: newStatus });
   renderKanban();
   renderKPIs();
   updateHITLBadge();
@@ -357,8 +374,8 @@ function renderTable() {
       case 'id':
         aVal = a.id; bVal = b.id; break;
       case 'tenant':
-        aVal = (getTenantById(a.tenantId)?.name || a.storeName || '').toLowerCase();
-        bVal = (getTenantById(b.tenantId)?.name || b.storeName || '').toLowerCase();
+        aVal = (a.storeName || '').toLowerCase();
+        bVal = (b.storeName || '').toLowerCase();
         break;
       case 'category':
         aVal = getCategoryLabel(a.aiCategory).toLowerCase();
@@ -375,8 +392,8 @@ function renderTable() {
         bVal = new Date(b.submittedAt).getTime();
         break;
       case 'assigned':
-        aVal = (getStaffById(a.assignedTo)?.name || 'zzz').toLowerCase();
-        bVal = (getStaffById(b.assignedTo)?.name || 'zzz').toLowerCase();
+        aVal = (staffMap[a.assignedTo]?.name || 'zzz').toLowerCase();
+        bVal = (staffMap[b.assignedTo]?.name || 'zzz').toLowerCase();
         break;
       default:
         aVal = a.id; bVal = b.id;
@@ -395,16 +412,15 @@ function renderTable() {
   }
 
   sorted.forEach(issue => {
-    const tenant = getTenantById(issue.tenantId);
-    const tenantDisplay = tenant ? escapeHtml(tenant.name) : escapeHtml(issue.storeName || '—');
+    const tenantDisplay = escapeHtml(issue.storeName || '—');
     const priorityInfo = getPriorityInfo(issue.aiPriorityLevel);
     const statusInfo = getStatusInfo(issue.status);
-    const staff = issue.assignedTo ? getStaffById(issue.assignedTo) : null;
+    const staff = issue.assignedTo ? staffMap[issue.assignedTo] : null;
 
     const tr = document.createElement('tr');
     tr.className = 'clickable';
     tr.innerHTML = `
-      <td><span class="font-semibold">${escapeHtml(issue.id)}</span></td>
+      <td><span class="font-semibold">${escapeHtml(issue.ticketNumber || issue.id)}</span></td>
       <td>${tenantDisplay}</td>
       <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span></td>
       <td>
@@ -439,10 +455,9 @@ function openIssueDetail(issueId) {
   const issue = issues.find(i => i.id === issueId);
   if (!issue) return;
 
-  const tenant = getTenantById(issue.tenantId);
   const statusInfo = getStatusInfo(issue.status);
   const priorityInfo = getPriorityInfo(issue.aiPriorityLevel);
-  const staff = issue.assignedTo ? getStaffById(issue.assignedTo) : null;
+  const staff = issue.assignedTo ? staffMap[issue.assignedTo] : null;
 
   // Confidence bar level
   let confLevel = 'low';
@@ -453,7 +468,7 @@ function openIssueDetail(issueId) {
   let gaugeColor = priorityInfo.color;
 
   // Staff options
-  const staffList = getUsers().filter(s => s.role === 'staff');
+  const staffList = Object.values(staffMap).filter(s => s.role === 'staff');
   const staffOptions = staffList.map(s =>
     `<option value="${s.id}" ${issue.assignedTo === s.id ? 'selected' : ''}>${s.name} — ${s.trade || 'Staff'}</option>`
   ).join('');
@@ -488,15 +503,13 @@ function openIssueDetail(issueId) {
   const bodyHTML = `
     <div style="margin-bottom: var(--sp-5);">
       <div class="flex items-center gap-3" style="margin-bottom: var(--sp-4);">
-        <span class="font-semibold" style="font-size: var(--text-lg);">${escapeHtml(issue.id)}</span>
+        <span class="font-semibold" style="font-size: var(--text-lg);">${escapeHtml(issue.ticketNumber || issue.id)}</span>
         <span class="status-badge" style="color:${statusInfo.color}">${escapeHtml(statusInfo.label)}</span>
         ${issue.validated ? '<span class="badge badge-success">✓ Validated</span>' : '<span class="badge badge-warning">Pending Review</span>'}
       </div>
-      ${tenant
-      ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(tenant.name)} • ${tenant.floor}${tenant.zone ? ' Zone ' + tenant.zone : ''}</div>`
-      : (issue.storeName
+      ${issue.storeName
         ? `<div class="text-sm text-muted" style="margin-bottom: var(--sp-2);">${escapeHtml(issue.storeName)}${issue.contactPerson ? ' • ' + escapeHtml(issue.contactPerson) : ''}${issue.phoneNumber ? ' • ' + escapeHtml(issue.phoneNumber) : ''}</div>`
-        : '')
+        : ''
     }
     </div>
 
@@ -552,11 +565,11 @@ function openIssueDetail(issueId) {
   // Bind save
   const saveBtn = panel.querySelector('#detail-save');
   if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
       const newAssign = panel.querySelector('#detail-assign').value || null;
       const newStatus = panel.querySelector('#detail-status').value;
 
-      issues = updateIssue(issue.id, {
+      issues = await updateIssue(issue.id, {
         assignedTo: newAssign,
         status: newStatus,
       });
@@ -646,6 +659,20 @@ function bindEvents() {
       openEditAdminProfileModal();
     });
   }
+
+  // Sign out link
+  const signOutLink = document.querySelector('#sign-out-link') || document.querySelector('a[onclick*="sessionStorage.removeItem"]');
+  if (signOutLink) {
+    signOutLink.removeAttribute('onclick');
+    signOutLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {}
+      sessionStorage.removeItem('firs_user');
+      window.location.replace('../index.html');
+    });
+  }
 }
 
 
@@ -655,8 +682,8 @@ function bindEvents() {
    ========================================================== */
 
 function startAutoRefresh() {
-  refreshTimer = setInterval(() => {
-    issues = loadIssues();
+  refreshTimer = setInterval(async () => {
+    issues = await loadIssues();
     renderKPIs();
     renderCurrentView();
     updateHITLBadge();

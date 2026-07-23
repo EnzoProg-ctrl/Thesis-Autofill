@@ -3,12 +3,14 @@
    ============================================================ */
 
 import { checkAuth } from './auth-guard.js';
-import { TENANTS, CATEGORIES, getCategoryLabel, getCategoryIcon } from './mock-data.js';
-import { loadIssues, addIssue, generateId, showModal, closeModal, showToast, escapeHtml } from './shared.js';
+import { CATEGORIES, getCategoryLabel, getCategoryIcon } from './mock-data.js';
+import { loadIssues, addIssue, showModal, closeModal, showToast, escapeHtml } from './shared.js';
 import { analyzeText } from './mock-bert.js';
+import { supabase } from './supabase-client.js';
 
+(async () => {
 /* ---------- Auth Guard ---------- */
-if (!checkAuth('tenant')) {
+if (!await checkAuth('tenant')) {
   throw new Error('Not authenticated');
 }
 
@@ -41,55 +43,37 @@ let selectedFileBase64 = null;
    1. Auto-Fill from Session
    ========================================================== */
 
-function autoFillFromSession() {
-  const raw = sessionStorage.getItem('firs_user');
-  if (!raw) return;
-
-  let user;
-  try { user = JSON.parse(raw); } catch(e) { return; }
-
-  const userEmail = (user.email || '').toLowerCase();
-
-  // 1) Check if session already has a tenantId
-  if (user.tenantId) {
-    resolvedTenantId = user.tenantId;
-  }
-
-  // 2) Try matching registered tenants by exact email
-  if (!resolvedTenantId) {
-    const registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-    const regMatch = registered.find(t => t.email && t.email.toLowerCase() === userEmail);
-    if (regMatch) {
-      resolvedTenantId = regMatch.id;
-      storeNameInput.value = regMatch.name || '';
-      contactPersonInput.value = regMatch.contact || '';
-      phoneNumberInput.value = regMatch.phone || '';
-      return;
+async function autoFillFromSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  
+  resolvedTenantId = session.user.id;
+  
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('*')
+    .eq('id', session.user.id)
+    .single();
+    
+  if (tenant) {
+    storeNameInput.value = tenant.store_name || '';
+    contactPersonInput.value = tenant.contact_person || '';
+    phoneNumberInput.value = tenant.phone_number || '';
+  } else {
+    // Fallback to session storage if tenant query fails
+    const raw = sessionStorage.getItem('firs_user');
+    if (raw) {
+      try {
+        const user = JSON.parse(raw);
+        storeNameInput.value = user.storeName || user.name || '';
+        contactPersonInput.value = user.contact || '';
+        phoneNumberInput.value = user.phone || '';
+      } catch (e) {}
     }
   }
-
-  // 3) Try matching built-in TENANTS by exact name
-  if (!resolvedTenantId) {
-    const sessionName = (user.storeName || user.name || '').toLowerCase();
-    if (sessionName) {
-      const builtIn = TENANTS.find(t => t.name.toLowerCase() === sessionName);
-      if (builtIn) {
-        resolvedTenantId = builtIn.id;
-        storeNameInput.value = builtIn.name;
-        contactPersonInput.value = builtIn.contact;
-        phoneNumberInput.value = builtIn.phone;
-        return;
-      }
-    }
-  }
-
-  // 4) Fallback: populate from session data if available
-  storeNameInput.value = user.storeName || user.name || '';
-  contactPersonInput.value = user.contact || '';
-  phoneNumberInput.value = user.phone || '';
 }
 
-autoFillFromSession();
+await autoFillFromSession();
 
 
 /* ==========================================================
@@ -284,21 +268,7 @@ reportForm.addEventListener('submit', async (e) => {
   overlay.onclick = null;
 
   try {
-    // Resolve the tenant ID from the store name if not already set
     let tenantId = resolvedTenantId;
-    if (!tenantId) {
-      // Try to find by the entered store name
-      const enteredName = storeNameInput.value.trim().toLowerCase();
-      const match = TENANTS.find(t => t.name.toLowerCase() === enteredName);
-      if (match) {
-        tenantId = match.id;
-      } else {
-        // Check registered tenants
-        const registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]');
-        const regMatch = registered.find(t => t.name && t.name.toLowerCase() === enteredName);
-        tenantId = regMatch ? regMatch.id : 'T-SELF';
-      }
-    }
 
     // Run BERT analysis (no selfAssessment parameter)
     const aiResult = await analyzeText(
@@ -306,20 +276,16 @@ reportForm.addEventListener('submit', async (e) => {
       categorySelect.value
     );
 
-    const issueId = generateId();
     const now = new Date().toISOString();
 
-    // Build the issue object
-    const issue = {
-      id: issueId,
+    // Build the issue object (camelCase, mapped to snake_case by shared.js mapIssueToDB/addIssue)
+    const issuePayload = {
       tenantId: tenantId,
       storeName: storeNameInput.value.trim(),
       contactPerson: contactPersonInput.value.trim(),
       phoneNumber: phoneNumberInput.value.trim(),
       category: categorySelect.value,
-      selfAssessment: null,
       status: 'awaiting_review',
-      assignedTo: null,
       text: descriptionText.value.trim(),
       aiCategory: aiResult.category,
       aiConfidence: aiResult.confidence,
@@ -327,14 +293,14 @@ reportForm.addEventListener('submit', async (e) => {
       aiPriorityLevel: aiResult.priorityLevel,
       aiLanguage: aiResult.language,
       validated: false,
-      validatedBy: null,
       submittedAt: now,
       updatedAt: now,
       imageUrl: selectedFileBase64 || null,
     };
 
-    // Save to localStorage
-    addIssue(issue);
+    // Save to database
+    const savedIssue = await addIssue(issuePayload);
+    const issueId = savedIssue.ticketNumber;
 
     // Determine estimated response time
     const responseTimeMap = {
@@ -472,3 +438,5 @@ function clearFormForNext() {
   categorySelect.classList.remove('error');
   descriptionText.classList.remove('error');
 }
+
+})();

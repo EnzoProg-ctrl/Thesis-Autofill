@@ -645,7 +645,10 @@
 
   </div>
 
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+
     const form = document.getElementById('loginForm');
     const emailInput = document.getElementById('loginEmail');
     const passwordInput = document.getElementById('loginPassword');
@@ -654,22 +657,6 @@
     const signInBtn = document.getElementById('signInBtn');
     const forgotLink = document.getElementById('forgotLink');
     const togglePasswordBtn = document.getElementById('togglePassword');
-
-    // Seed default users if local storage is empty
-    (function initUsers() {
-      if (!localStorage.getItem('firs_users')) {
-        var defaultUsers = [
-          { id: 'U01', name: 'System Admin', email: 'admin@gmail.com', password: 'admin123', role: 'admin', avatar: 'SA' },
-          { id: 'U02', name: 'Engr. Roberto Manansala', email: 'roberto@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: 'RM' },
-          { id: 'U03', name: 'Mario Dela Vega', email: 'mario@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Electrician', avatar: 'MD' },
-          { id: 'U04', name: 'Jun Alvarez', email: 'jun@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Plumber', avatar: 'JA' },
-          { id: 'U05', name: 'Dennis Soriano', email: 'dennis@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'HVAC', avatar: 'DS' },
-          { id: 'U06', name: 'Arnold Bautista', email: 'arnold@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'General', avatar: 'AB' },
-          { id: 'U07', name: 'Rex Cayetano', email: 'rex@nepomall-pmo.com', password: 'staff123', role: 'staff', trade: 'Security', avatar: 'RC' }
-        ];
-        localStorage.setItem('firs_users', JSON.stringify(defaultUsers));
-      }
-    })();
 
     // Show/Hide password toggle
     togglePasswordBtn.addEventListener('click', function () {
@@ -681,13 +668,13 @@
       this.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
     });
 
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
       // Reset error
       authError.classList.remove('show');
 
-      const email = emailInput.value.trim().toLowerCase();
+      const email = emailInput.value.trim();
       const password = passwordInput.value;
 
       // Basic validation
@@ -707,95 +694,86 @@
         return;
       }
 
-      // Simulate sign-in processing
       signInBtn.disabled = true;
       signInBtn.textContent = 'Signing in...';
 
-      setTimeout(function () {
-        // ── Universal Dynamic Login ──
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-        // 1. Check firs_users (admin / staff accounts)
-        var sysUsers = [];
-        try { sysUsers = JSON.parse(localStorage.getItem('firs_users') || '[]'); } catch (e) { sysUsers = []; }
+      if (error) {
+        signInBtn.disabled = false;
+        signInBtn.textContent = 'Sign In';
+        showError(error.message);
+        return;
+      }
 
-        var sysMatch = null;
-        for (var i = 0; i < sysUsers.length; i++) {
-          if (sysUsers[i].email && sysUsers[i].email.toLowerCase().trim() === email) {
-            sysMatch = sysUsers[i];
-            break;
-          }
-        }
+      if (data && data.user) {
+        // Check profiles (admin/staff)
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
 
-        if (sysMatch) {
-          if (sysMatch.password !== password) {
-            signInBtn.disabled = false;
-            signInBtn.textContent = 'Sign In';
-            showError('Invalid email or password.');
-            return;
-          }
-
-          // Build session for admin or staff
+        if (profileData) {
           sessionStorage.setItem('firs_user', JSON.stringify({
-            id: sysMatch.id,
-            email: sysMatch.email,
-            role: sysMatch.role,
-            name: sysMatch.name,
-            trade: sysMatch.trade || null,
-            avatar: sysMatch.avatar || 'SA',
+            id: profileData.id,
+            email: data.user.email,
+            role: profileData.role,
+            name: profileData.full_name,
+            trade: profileData.trade || null,
+            avatar: profileData.avatar_initials || 'SA',
             loggedInAt: new Date().toISOString()
           }));
-          window.location.href = 'admin/index.html';
+          // Route by role — staff go to their own dashboard
+          if (profileData.role === 'staff') {
+            window.location.href = 'admin/staff.html';
+          } else {
+            window.location.href = 'admin/index.html';
+          }
           return;
         }
 
-        // 2. Check firs_registered_tenants
-        var registered = [];
-        try { registered = JSON.parse(localStorage.getItem('firs_registered_tenants') || '[]'); } catch (e) { registered = []; }
+        // Check tenants
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
 
-        var regMatch = null;
-        for (var j = 0; j < registered.length; j++) {
-          if (registered[j].email && registered[j].email.toLowerCase().trim() === email) {
-            regMatch = registered[j];
-            break;
-          }
-        }
-
-        if (regMatch) {
-          if (regMatch.password !== password) {
-            signInBtn.disabled = false;
-            signInBtn.textContent = 'Sign In';
-            showError('Invalid email or password.');
-            return;
-          }
-
+        if (tenantData) {
           sessionStorage.setItem('firs_user', JSON.stringify({
-            email: email,
+            id: tenantData.id,
+            email: data.user.email,
             role: 'tenant',
-            tenantId: regMatch.id,
-            storeName: regMatch.name || email.split('@')[0],
-            name: regMatch.name || regMatch.contact || email.split('@')[0],
-            contact: regMatch.contact || email.split('@')[0],
-            phone: regMatch.phone || '',
+            tenantId: tenantData.id,
+            storeName: tenantData.store_name,
+            name: tenantData.contact_person,
+            contact: tenantData.contact_person,
+            phone: tenantData.phone_number,
             loggedInAt: new Date().toISOString()
           }));
           window.location.href = 'tenant/home.html';
           return;
         }
 
-        // 3. No match found
+        // If neither found
         signInBtn.disabled = false;
         signInBtn.textContent = 'Sign In';
-        showError('Invalid email or password.');
-
-      }, 800);
+        showError('Account not configured');
+      }
     });
 
-    forgotLink.addEventListener('click', function (e) {
+    forgotLink.addEventListener('click', async function (e) {
       e.preventDefault();
       const email = emailInput.value.trim();
       if (email && isValidEmail(email)) {
         authError.classList.remove('show');
-        alert('A password reset link has been sent to ' + email + '.\n\n(This is a simulated action.)');
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) {
+          showError(error.message);
+        } else {
+          alert('A password reset link has been sent to ' + email + '.');
+        }
       } else {
         showError('Enter your email above, then click "Forgot password?"');
       }
@@ -810,20 +788,26 @@
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    // Check if user is already logged in
-    (function checkSession() {
-      const user = sessionStorage.getItem('firs_user');
-      if (user) {
-        try {
-          const parsed = JSON.parse(user);
-          if (parsed.role === 'admin' || parsed.role === 'staff') {
-            window.location.href = 'admin/index.html';
-          } else {
-            window.location.href = 'tenant/home.html';
-          }
-        } catch (e) { /* ignore */ }
+    // Check if user is already logged in via Supabase
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const user = sessionStorage.getItem('firs_user');
+        if (user) {
+          try {
+            const parsed = JSON.parse(user);
+            if (parsed.role === 'admin') {
+              window.location.href = 'admin/index.html';
+            } else if (parsed.role === 'staff') {
+              window.location.href = 'admin/staff.html';
+            } else {
+              window.location.href = 'tenant/home.html';
+            }
+          } catch (e) { /* ignore */ }
+        }
       }
-    })();
+    }
+    checkSession();
   </script>
 </body>
 
