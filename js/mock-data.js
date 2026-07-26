@@ -30,37 +30,37 @@ export const STATUS_LIST = [
   { id: 'resolved', label: 'Resolved', color: '#22c55e' },
 ];
 
-/* ---------- Historical Data for Analytics (6 months) ---------- */
+/* ---------- Historical Data for Analytics (Weekly — 7 days, Mon–Sun) ---------- */
 
-const MONTHS_LABELS = ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'May 2026', 'Jun 2026'];
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const HISTORICAL_DATA = {
-  months: MONTHS_LABELS,
-  issuesByMonth: [0, 0, 0, 0, 0, 0],
+  days: DAY_LABELS,
+  issuesByDay: [0, 0, 0, 0, 0, 0, 0],
   categoryTrends: {
-    electrical: [0, 0, 0, 0, 0, 0],
-    plumbing: [0, 0, 0, 0, 0, 0],
-    hvac: [0, 0, 0, 0, 0, 0],
-    structural: [0, 0, 0, 0, 0, 0],
-    pest: [0, 0, 0, 0, 0, 0],
-    elevator: [0, 0, 0, 0, 0, 0],
-    fire_safety: [0, 0, 0, 0, 0, 0],
-    housekeeping: [0, 0, 0, 0, 0, 0],
-    security: [0, 0, 0, 0, 0, 0],
-    it_network: [0, 0, 0, 0, 0, 0],
+    electrical: [0, 0, 0, 0, 0, 0, 0],
+    plumbing: [0, 0, 0, 0, 0, 0, 0],
+    hvac: [0, 0, 0, 0, 0, 0, 0],
+    structural: [0, 0, 0, 0, 0, 0, 0],
+    pest: [0, 0, 0, 0, 0, 0, 0],
+    elevator: [0, 0, 0, 0, 0, 0, 0],
+    fire_safety: [0, 0, 0, 0, 0, 0, 0],
+    housekeeping: [0, 0, 0, 0, 0, 0, 0],
+    security: [0, 0, 0, 0, 0, 0, 0],
+    it_network: [0, 0, 0, 0, 0, 0, 0],
   },
   priorityTrends: {
-    critical: [0, 0, 0, 0, 0, 0],
-    high: [0, 0, 0, 0, 0, 0],
-    medium: [0, 0, 0, 0, 0, 0],
-    low: [0, 0, 0, 0, 0, 0],
+    critical: [0, 0, 0, 0, 0, 0, 0],
+    high: [0, 0, 0, 0, 0, 0, 0],
+    medium: [0, 0, 0, 0, 0, 0, 0],
+    low: [0, 0, 0, 0, 0, 0, 0],
   },
   avgResolutionTime: {
     electrical: 0, plumbing: 0, hvac: 0, structural: 0,
     pest: 0, elevator: 0, fire_safety: 0, housekeeping: 0,
     security: 0, it_network: 0,
   },
-  aiAccuracy: [0, 0, 0, 0, 0, 0],
+  aiAccuracy: [0, 0, 0, 0, 0, 0, 0],
   budgetByCategory: {
     electrical: 0, plumbing: 0, hvac: 0, structural: 0,
     pest: 0, elevator: 0, fire_safety: 0, housekeeping: 0,

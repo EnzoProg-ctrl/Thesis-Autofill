@@ -110,9 +110,7 @@
         </div>
         <div class="topbar-right">
           <div class="segmented-control" id="timeRange">
-            <button class="segmented-btn" data-range="1">This Month</button>
-            <button class="segmented-btn" data-range="3">This Quarter</button>
-            <button class="segmented-btn active" data-range="6">6 Months</button>
+            <button class="segmented-btn active" data-range="weekly">Weekly</button>
           </div>
           <button class="btn btn-secondary btn-sm" id="exportPdf"><svg xmlns="http://www.w3.org/2000/svg" width="14"
               height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -174,7 +172,7 @@
 
           <!-- 2. Monthly Trend — Line -->
           <div class="analytics-card">
-            <h4>Monthly Trend</h4>
+            <h4>Weekly Trend</h4>
             <div class="chart-container">
               <canvas id="chartMonthlyTrend"></canvas>
             </div>
