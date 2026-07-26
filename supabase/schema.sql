@@ -26,13 +26,14 @@ COMMENT ON COLUMN profiles.trade IS 'Staff specialty: Electrician, Plumber, HVAC
 --  (Registered store accounts — linked to Supabase Auth)
 -- =====================
 CREATE TABLE tenants (
-  id              UUID        PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
-  store_name      TEXT        NOT NULL,
-  floor           TEXT        NOT NULL,
-  contact_person  TEXT        NOT NULL,
-  phone_number    VARCHAR(11),
-  email           TEXT        UNIQUE NOT NULL,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                    UUID        PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  store_name            TEXT        NOT NULL,
+  floor                 TEXT        NOT NULL,
+  contact_person        TEXT        NOT NULL,
+  phone_number          VARCHAR(11),
+  email                 TEXT        UNIQUE NOT NULL,
+  privacy_consented_at  TIMESTAMPTZ NOT NULL,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE  tenants IS 'Registered mall tenant / store accounts.';
