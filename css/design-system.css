@@ -53,12 +53,12 @@
   /* Priority mapping */
   --priority-critical: #dc2626;
   --priority-critical-bg: #fef2f2;
-  --priority-high: #ea580c;
-  --priority-high-bg: #fff7ed;
-  --priority-medium: #d97706;
-  --priority-medium-bg: #fffbeb;
-  --priority-low: #3b82f6;
-  --priority-low-bg: #eff6ff;
+  --priority-high: #eab308;
+  --priority-high-bg: #fefce8;
+  --priority-medium: #3b82f6;
+  --priority-medium-bg: #eff6ff;
+  --priority-low: #22c55e;
+  --priority-low-bg: #f0fdf4;
 
   /* Typography */
   --font: 'Inter', system-ui, -apple-system, sans-serif;

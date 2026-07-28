@@ -338,21 +338,21 @@
 }
 
 .priority-dot.critical {
-  background: #EF4444;
+  background: var(--priority-critical);
   animation: priority-pulse 2s ease-in-out infinite;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.5);
 }
 
 .priority-dot.high {
-  background: #EAB308;
+  background: var(--priority-high);
 }
 
 .priority-dot.medium {
-  background: #3B82F6;
+  background: var(--priority-medium);
 }
 
 .priority-dot.low {
-  background: #4ADE80;
+  background: var(--priority-low);
 }
 
 @keyframes priority-pulse {

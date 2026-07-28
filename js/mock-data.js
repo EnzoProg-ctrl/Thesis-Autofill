@@ -19,9 +19,9 @@ export const CATEGORIES = [
 
 export const PRIORITY_LEVELS = [
   { id: 'critical', label: 'Critical', color: '#dc2626', bg: '#fef2f2' },
-  { id: 'high', label: 'High', color: '#ea580c', bg: '#fff7ed' },
-  { id: 'medium', label: 'Medium', color: '#d97706', bg: '#fffbeb' },
-  { id: 'low', label: 'Low', color: '#3b82f6', bg: '#eff6ff' },
+  { id: 'high', label: 'High', color: '#eab308', bg: '#fefce8' },
+  { id: 'medium', label: 'Medium', color: '#3b82f6', bg: '#eff6ff' },
+  { id: 'low', label: 'Low', color: '#22c55e', bg: '#f0fdf4' },
 ];
 
 export const STATUS_LIST = [

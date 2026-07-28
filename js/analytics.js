@@ -55,6 +55,15 @@ let chartInstances = {};
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /**
+ * Generate labels for each day of the current month (1, 2, 3, ... 28/29/30/31).
+ */
+function getMonthDayLabels() {
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+}
+
+/**
  * Get the Monday 00:00 and Sunday 23:59:59 of the current week.
  */
 function getCurrentWeekBounds() {
@@ -71,6 +80,16 @@ function getCurrentWeekBounds() {
   sunday.setHours(23, 59, 59, 999);
 
   return { monday, sunday };
+}
+
+/**
+ * Get the 1st 00:00 and last day 23:59:59 of the current month.
+ */
+function getCurrentMonthBounds() {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { firstDay, lastDay };
 }
 
 /**
@@ -206,6 +225,131 @@ function aggregateWeeklyData(allIssues) {
   };
 }
 
+/**
+ * Aggregate live issues into the monthly data shape needed by charts/KPIs.
+ */
+function aggregateMonthlyData(allIssues) {
+  const { firstDay, lastDay } = getCurrentMonthBounds();
+  const daysInMonth = lastDay.getDate();
+
+  // Filter to current month
+  const monthIssues = allIssues.filter(issue => {
+    const d = new Date(issue.submittedAt);
+    return d >= firstDay && d <= lastDay;
+  });
+
+  // --- Issues by day-of-month ---
+  const issuesByDay = new Array(daysInMonth).fill(0);
+  for (const issue of monthIssues) {
+    const idx = new Date(issue.submittedAt).getDate() - 1;
+    issuesByDay[idx]++;
+  }
+
+  // --- Category trends (per day-of-month) ---
+  const catKeys = Object.keys(CATEGORY_COLORS);
+  const categoryTrends = {};
+  for (const cat of catKeys) {
+    categoryTrends[cat] = new Array(daysInMonth).fill(0);
+  }
+  const categoryTotals = {};
+  for (const cat of catKeys) categoryTotals[cat] = 0;
+
+  for (const issue of monthIssues) {
+    const cat = issue.aiCategory || issue.category || 'other';
+    const idx = new Date(issue.submittedAt).getDate() - 1;
+    if (categoryTrends[cat]) {
+      categoryTrends[cat][idx]++;
+      categoryTotals[cat]++;
+    }
+  }
+
+  // --- Priority distribution (per day-of-month) ---
+  const priorityTrends = {
+    critical: new Array(daysInMonth).fill(0),
+    high: new Array(daysInMonth).fill(0),
+    medium: new Array(daysInMonth).fill(0),
+    low: new Array(daysInMonth).fill(0),
+  };
+  for (const issue of monthIssues) {
+    const level = issue.aiPriorityLevel || 'low';
+    const idx = new Date(issue.submittedAt).getDate() - 1;
+    if (priorityTrends[level]) {
+      priorityTrends[level][idx]++;
+    }
+  }
+
+  // --- Avg resolution time by category (hours) ---
+  const resolutionBuckets = {};
+  for (const cat of catKeys) resolutionBuckets[cat] = [];
+
+  for (const issue of monthIssues) {
+    if (issue.status === 'resolved' && issue.submittedAt && issue.updatedAt) {
+      const cat = issue.aiCategory || issue.category || 'other';
+      const hours = (new Date(issue.updatedAt) - new Date(issue.submittedAt)) / (1000 * 60 * 60);
+      if (resolutionBuckets[cat]) {
+        resolutionBuckets[cat].push(hours);
+      }
+    }
+  }
+
+  const avgResolutionTime = {};
+  for (const cat of catKeys) {
+    const arr = resolutionBuckets[cat];
+    avgResolutionTime[cat] = arr.length > 0
+      ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
+      : 0;
+  }
+
+  // --- AI Accuracy per day-of-month ---
+  const dayValidated = new Array(daysInMonth).fill(0);
+  const dayCorrect = new Array(daysInMonth).fill(0);
+
+  for (const issue of monthIssues) {
+    if (issue.validated) {
+      const idx = new Date(issue.submittedAt).getDate() - 1;
+      dayValidated[idx]++;
+      if (!issue.overridden) {
+        dayCorrect[idx]++;
+      }
+    }
+  }
+
+  const monthDayLabels = getMonthDayLabels();
+  const aiAccuracy = monthDayLabels.map((_, i) => {
+    if (dayValidated[i] === 0) return 0;
+    return Math.round((dayCorrect[i] / dayValidated[i]) * 100);
+  });
+
+  // --- Budget impact by category ---
+  const budgetByCategory = {};
+  for (const cat of catKeys) {
+    budgetByCategory[cat] = categoryTotals[cat] * (ESTIMATED_COST_PER_ISSUE[cat] || 1000);
+  }
+
+  // --- Status counts (all issues, not just this month) ---
+  const statusCounts = {};
+  for (const s of STATUS_LIST) statusCounts[s.id] = 0;
+  for (const issue of allIssues) {
+    if (statusCounts[issue.status] !== undefined) {
+      statusCounts[issue.status]++;
+    }
+  }
+
+  return {
+    weekIssues: monthIssues,
+    allIssues,
+    issuesByDay,
+    categoryTrends,
+    categoryTotals,
+    priorityTrends,
+    avgResolutionTime,
+    aiAccuracy,
+    budgetByCategory,
+    statusCounts,
+    labels: monthDayLabels,
+  };
+}
+
 function destroyAllCharts() {
   for (const key of Object.keys(chartInstances)) {
     if (chartInstances[key]) {
@@ -224,7 +368,9 @@ function formatPHP(value) {
 function renderKPIs(data) {
   const { issuesByDay, categoryTotals, avgResolutionTime, aiAccuracy, weekIssues } = data;
 
-  // 1. Total Issues (this week)
+  const periodLabel = activeRange === 'monthly' ? 'this month' : 'this week';
+
+  // 1. Total Issues
   const total = issuesByDay.reduce((s, v) => s + v, 0);
   document.getElementById('kpiTotalIssues').textContent = total;
 
@@ -251,10 +397,10 @@ function renderKPIs(data) {
   const topCat = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
   if (topCat && topCat[1] > 0) {
     document.getElementById('kpiTopCategory').textContent = getCategoryLabel(topCat[0]);
-    document.getElementById('kpiTopCategoryCount').textContent = `${topCat[1]} issues this week`;
+    document.getElementById('kpiTopCategoryCount').textContent = `${topCat[1]} issues ${periodLabel}`;
   } else {
     document.getElementById('kpiTopCategory').textContent = '—';
-    document.getElementById('kpiTopCategoryCount').textContent = 'No issues this week';
+    document.getElementById('kpiTopCategoryCount').textContent = `No issues ${periodLabel}`;
   }
   document.getElementById('kpiTopCategoryCount').className = 'kpi-trend';
 
@@ -266,7 +412,7 @@ function renderKPIs(data) {
   document.getElementById('kpiAvgResolution').textContent = avgRes > 0 ? `${avgRes}h` : '—';
   document.getElementById('kpiResolutionNote').textContent = resVals.length > 0
     ? 'Across resolved issues'
-    : 'No resolved issues this week';
+    : `No resolved issues ${periodLabel}`;
   document.getElementById('kpiResolutionNote').className = 'kpi-trend';
 
   // 4. AI Accuracy (overall for the week)
@@ -282,7 +428,7 @@ function renderKPIs(data) {
     accTrendEl.textContent = `${totalCorrect}/${totalValidated} validated correct`;
   } else {
     accTrendEl.className = 'kpi-trend';
-    accTrendEl.textContent = 'No validated issues this week';
+    accTrendEl.textContent = `No validated issues ${periodLabel}`;
   }
 }
 
@@ -337,7 +483,7 @@ function renderWeeklyTrend(data) {
     {
       type: 'line',
       data: {
-        labels: DAY_LABELS,
+        labels: data.labels,
         datasets: [{
           label: 'Issues Submitted',
           data: issuesByDay,
@@ -387,7 +533,7 @@ function renderPriorityDist(data) {
     {
       type: 'bar',
       data: {
-        labels: DAY_LABELS,
+        labels: data.labels,
         datasets: [
           {
             label: 'Critical',
@@ -398,19 +544,19 @@ function renderPriorityDist(data) {
           {
             label: 'High',
             data: priorityTrends.high,
-            backgroundColor: '#ea580c',
+            backgroundColor: '#eab308',
             borderRadius: 4,
           },
           {
             label: 'Medium',
             data: priorityTrends.medium,
-            backgroundColor: '#d97706',
+            backgroundColor: '#3b82f6',
             borderRadius: 4,
           },
           {
             label: 'Low',
             data: priorityTrends.low,
-            backgroundColor: '#3b82f6',
+            backgroundColor: '#22c55e',
             borderRadius: 4,
           },
         ],
@@ -488,14 +634,14 @@ function renderResolutionTime(data) {
 
 function renderAiAccuracy(data) {
   const { aiAccuracy } = data;
-  const targetData = DAY_LABELS.map(() => 90);
+  const targetData = data.labels.map(() => 90);
 
   chartInstances.aiAccuracy = new Chart(
     document.getElementById('chartAiAccuracy'),
     {
       type: 'line',
       data: {
-        labels: DAY_LABELS,
+        labels: data.labels,
         datasets: [
           {
             label: 'AI Accuracy',
@@ -727,7 +873,14 @@ async function renderAll() {
 
   // Fetch live data from Supabase
   const allIssues = await loadIssues();
-  const data = aggregateWeeklyData(allIssues);
+  const data = activeRange === 'monthly'
+    ? aggregateMonthlyData(allIssues)
+    : aggregateWeeklyData(allIssues);
+
+  // Set labels based on range (weekly uses DAY_LABELS, monthly uses day-of-month)
+  if (!data.labels) {
+    data.labels = DAY_LABELS;
+  }
 
   // Render all KPIs and charts with aggregated data
   renderKPIs(data);
