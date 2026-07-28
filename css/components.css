@@ -320,29 +320,51 @@
   color: var(--gray-600);
 }
 
-/* Priority badges */
+/* Priority indicator dots */
 .priority-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
 }
 
+/* Kanban-card corner placement */
+.kanban-card .priority-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+}
+
 .priority-dot.critical {
-  background: var(--priority-critical);
+  background: #EF4444;
+  animation: priority-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
 
 .priority-dot.high {
-  background: var(--priority-high);
+  background: #EAB308;
 }
 
 .priority-dot.medium {
-  background: var(--priority-medium);
+  background: #3B82F6;
 }
 
 .priority-dot.low {
-  background: var(--priority-low);
+  background: #4ADE80;
+}
+
+@keyframes priority-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.7), 0 0 20px rgba(239, 68, 68, 0.3);
+  }
 }
 
 .priority-badge {
@@ -747,6 +769,7 @@
 }
 
 .kanban-card {
+  position: relative;
   background: #fff;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);

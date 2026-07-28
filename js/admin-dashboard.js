@@ -275,12 +275,13 @@ function createKanbanCard(issue) {
   card.draggable = true;
   card.dataset.issueId = issue.id;
 
+  const priorityLabel = priorityInfo ? priorityInfo.label : (issue.aiPriorityLevel || 'Unknown');
   const tenantDisplay = escapeHtml(issue.storeName || 'Unknown');
 
   card.innerHTML = `
+    <span class="priority-dot ${issue.aiPriorityLevel || ''}" title="Priority: ${escapeHtml(priorityLabel)}"></span>
     <div class="kanban-card-header">
       <span class="kanban-card-id">${escapeHtml(issue.ticketNumber || issue.id)}</span>
-      <span class="priority-dot ${issue.aiPriorityLevel}"></span>
     </div>
     <div class="kanban-card-title">${escapeHtml(issue.text)}</div>
     <div class="kanban-card-meta">

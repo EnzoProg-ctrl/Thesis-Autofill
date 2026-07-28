@@ -20,30 +20,30 @@ Chart.defaults.maintainAspectRatio = true;
 
 /* ---------- Category Colors ---------- */
 const CATEGORY_COLORS = {
-  electrical:   '#3b82f6',
-  plumbing:     '#0ea5e9',
-  hvac:         '#8b5cf6',
-  structural:   '#f59e0b',
-  pest:         '#ef4444',
-  elevator:     '#10b981',
-  fire_safety:  '#f97316',
+  electrical: '#3b82f6',
+  plumbing: '#0ea5e9',
+  hvac: '#8b5cf6',
+  structural: '#f59e0b',
+  pest: '#ef4444',
+  elevator: '#10b981',
+  fire_safety: '#f97316',
   housekeeping: '#6366f1',
-  security:     '#ec4899',
-  it_network:   '#14b8a6',
+  security: '#ec4899',
+  it_network: '#14b8a6',
 };
 
 /* ---------- Estimated cost per category (PHP) for budget chart ---------- */
 const ESTIMATED_COST_PER_ISSUE = {
-  electrical:   3500,
-  plumbing:     2800,
-  hvac:         5000,
-  structural:   8000,
-  pest:         1500,
-  elevator:     6000,
-  fire_safety:  4500,
+  electrical: 3500,
+  plumbing: 2800,
+  hvac: 5000,
+  structural: 8000,
+  pest: 1500,
+  elevator: 6000,
+  fire_safety: 4500,
   housekeeping: 800,
-  security:     2000,
-  it_network:   3000,
+  security: 2000,
+  it_network: 3000,
 };
 
 /* ---------- State ---------- */
@@ -122,9 +122,9 @@ function aggregateWeeklyData(allIssues) {
   // --- Priority distribution (per day) ---
   const priorityTrends = {
     critical: [0, 0, 0, 0, 0, 0, 0],
-    high:     [0, 0, 0, 0, 0, 0, 0],
-    medium:   [0, 0, 0, 0, 0, 0, 0],
-    low:      [0, 0, 0, 0, 0, 0, 0],
+    high: [0, 0, 0, 0, 0, 0, 0],
+    medium: [0, 0, 0, 0, 0, 0, 0],
+    low: [0, 0, 0, 0, 0, 0, 0],
   };
   for (const issue of weekIssues) {
     const level = issue.aiPriorityLevel || 'low';
@@ -160,7 +160,7 @@ function aggregateWeeklyData(allIssues) {
   // --- AI Accuracy per day ---
   // Accuracy = validated issues where AI was NOT overridden / total validated
   const dayValidated = [0, 0, 0, 0, 0, 0, 0];
-  const dayCorrect   = [0, 0, 0, 0, 0, 0, 0];
+  const dayCorrect = [0, 0, 0, 0, 0, 0, 0];
 
   for (const issue of weekIssues) {
     if (issue.validated) {
@@ -797,7 +797,7 @@ function initSidebarToggle() {
 
 function applyRBAC() {
   let currentUser = null;
-  try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+  try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
   if (!currentUser) return;
 
   if (currentUser.role === 'staff') {
@@ -820,10 +820,10 @@ function applyRBAC() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   applyRBAC();
-  
+
   // Resolve current user for event binding
   let currentUser = null;
-  try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch(e) { /* ignore */ }
+  try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
 
   // Manage Users link listener
   const manageUsersLink = document.getElementById('manage-users-link');
@@ -851,7 +851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     signOutLink.removeAttribute('onclick');
     signOutLink.addEventListener('click', async (e) => {
       e.preventDefault();
-      try { await supabase.auth.signOut(); } catch (err) {}
+      try { await supabase.auth.signOut(); } catch (err) { }
       sessionStorage.removeItem('firs_user');
       window.location.replace('../index.html');
     });
