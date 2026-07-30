@@ -4,7 +4,7 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './mock-data.js';
 
 /* ---------- Auth Guard ---------- */
@@ -252,8 +252,11 @@ function renderKanban() {
     body.addEventListener('dragleave', handleDragLeave);
     body.addEventListener('drop', handleDrop);
 
-    // Sort by aiPriority descending (highest priority first)
-    colIssues.sort((a, b) => (b.aiPriority || 0) - (a.aiPriority || 0));
+    // Sort by latest activity (most recent first), tiebreak by priority
+    colIssues.sort((a, b) => {
+      const timeDiff = getLatestActivityTime(b) - getLatestActivityTime(a);
+      return timeDiff !== 0 ? timeDiff : (b.aiPriority || 0) - (a.aiPriority || 0);
+    });
 
     if (colIssues.length === 0) {
       body.innerHTML = `<div class="empty-state" style="padding: var(--sp-6) var(--sp-2);"><div class="empty-state-text">No issues</div></div>`;
@@ -287,7 +290,7 @@ function createKanbanCard(issue) {
     <div class="kanban-card-meta">
       <span>${tenantDisplay}</span>
       <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span>
-      <span>${formatRelativeTime(issue.submittedAt)}</span>
+      <span>${formatActivityTime(issue)}</span>
     </div>
   `;
 
@@ -392,8 +395,8 @@ function renderTable() {
         bVal = STATUS_COLUMNS.indexOf(b.status);
         break;
       case 'submitted':
-        aVal = new Date(a.submittedAt).getTime();
-        bVal = new Date(b.submittedAt).getTime();
+        aVal = getLatestActivityTime(a);
+        bVal = getLatestActivityTime(b);
         break;
       case 'assigned':
         aVal = (staffMap[a.assignedTo]?.name || 'zzz').toLowerCase();
@@ -434,7 +437,7 @@ function renderTable() {
         </div>
       </td>
       <td><span class="status-badge" style="color:${statusInfo.color}">${escapeHtml(statusInfo.label)}</span></td>
-      <td class="text-sm text-muted">${formatRelativeTime(issue.submittedAt)}</td>
+      <td class="text-sm text-muted">${formatActivityTime(issue)}</td>
       <td>${staff ? escapeHtml(staff.name) : '<span class="text-muted">Unassigned</span>'}</td>
     `;
     tr.addEventListener('click', () => openIssueDetail(issue.id));

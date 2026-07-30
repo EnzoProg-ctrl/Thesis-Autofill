@@ -155,15 +155,45 @@ export function formatRelativeTime(isoString) {
   const now = new Date();
   const then = new Date(isoString);
   const diffMs = now - then;
+  const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffMs / 60000);
   const diffHrs = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
+  if (diffSecs < 60) return `${Math.max(diffSecs, 1)}s ago`;
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHrs < 24) return `${diffHrs}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   return formatDate(isoString);
+}
+
+/**
+ * Returns a formatted activity string for an issue.
+ * If updated_at is meaningfully newer than submitted_at, returns "Updated Xm ago".
+ * Otherwise returns "Submitted Xh ago" (original submission time).
+ */
+export function formatActivityTime(issue) {
+  if (!issue) return '—';
+  const submitted = issue.submittedAt ? new Date(issue.submittedAt).getTime() : 0;
+  const updated = issue.updatedAt ? new Date(issue.updatedAt).getTime() : 0;
+
+  // Consider the report "edited" if updated_at is more than 2 seconds after submitted_at
+  const wasEdited = updated > 0 && (updated - submitted) > 2000;
+
+  if (wasEdited) {
+    return `Updated ${formatRelativeTime(issue.updatedAt).replace(' ago', '')} ago`;
+  }
+  return formatRelativeTime(issue.submittedAt);
+}
+
+/**
+ * Returns the latest activity timestamp (updated_at or submitted_at) for sorting.
+ */
+export function getLatestActivityTime(issue) {
+  if (!issue) return 0;
+  const submitted = issue.submittedAt ? new Date(issue.submittedAt).getTime() : 0;
+  const updated = issue.updatedAt ? new Date(issue.updatedAt).getTime() : 0;
+  return Math.max(submitted, updated);
 }
 
 
