@@ -62,7 +62,7 @@
     }
 
     .hero-tagline span {
-      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      background: linear-gradient(#3e54d1 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -164,7 +164,7 @@
     .logo-icon {
       width: 46px;
       height: 46px;
-      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      background: linear-gradient(135deg, #2563eb 0%);
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -212,36 +212,6 @@
       color: var(--gray-500);
       margin-bottom: 28px;
       line-height: 1.5;
-    }
-
-    /* AI Badge — sleek pill */
-    .ai-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.07) 0%, rgba(124, 58, 237, 0.07) 100%);
-      border: 1px solid rgba(37, 99, 235, 0.15);
-      border-radius: 100px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: #4f46e5;
-      letter-spacing: 0.02em;
-      margin-bottom: 28px;
-      transition: all var(--ease-base);
-    }
-
-    .ai-badge:hover {
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(124, 58, 237, 0.12) 100%);
-      border-color: rgba(37, 99, 235, 0.25);
-    }
-
-    .ai-badge-dot {
-      width: 7px;
-      height: 7px;
-      background: #4f46e5;
-      border-radius: 50%;
-      animation: pulse-dot 2s ease-in-out infinite;
     }
 
     @keyframes pulse-dot {
@@ -581,12 +551,6 @@
         <!-- Heading -->
         <h2 class="auth-heading">Welcome back</h2>
         <p class="auth-description">Sign in to manage facility reports or submit a new issue.</p>
-
-        <!-- AI Badge -->
-        <div class="ai-badge">
-          <span class="ai-badge-dot"></span>
-          Powered by BERT AI — Understands Taglish
-        </div>
 
         <!-- Error -->
         <div class="auth-error" id="authError">
