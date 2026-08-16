@@ -13,7 +13,6 @@ export const CATEGORIES = [
   { id: 'elevator', label: 'Escalator', icon: CATEGORY_ICONS.elevator },
   { id: 'fire_safety', label: 'Fire Safety', icon: CATEGORY_ICONS.fire_safety },
   { id: 'housekeeping', label: 'Housekeeping', icon: CATEGORY_ICONS.housekeeping },
-  { id: 'security', label: 'Security', icon: CATEGORY_ICONS.security },
   { id: 'other', label: 'Other', icon: CATEGORY_ICONS.other },
 ];
 
@@ -46,7 +45,6 @@ export const HISTORICAL_DATA = {
     elevator: [0, 0, 0, 0, 0, 0, 0],
     fire_safety: [0, 0, 0, 0, 0, 0, 0],
     housekeeping: [0, 0, 0, 0, 0, 0, 0],
-    security: [0, 0, 0, 0, 0, 0, 0],
     it_network: [0, 0, 0, 0, 0, 0, 0],
   },
   priorityTrends: {
@@ -58,13 +56,13 @@ export const HISTORICAL_DATA = {
   avgResolutionTime: {
     electrical: 0, plumbing: 0, hvac: 0, structural: 0,
     pest: 0, elevator: 0, fire_safety: 0, housekeeping: 0,
-    security: 0, it_network: 0,
+    it_network: 0,
   },
   aiAccuracy: [0, 0, 0, 0, 0, 0, 0],
   budgetByCategory: {
     electrical: 0, plumbing: 0, hvac: 0, structural: 0,
     pest: 0, elevator: 0, fire_safety: 0, housekeeping: 0,
-    security: 0, it_network: 0,
+    it_network: 0,
   },
 };
 

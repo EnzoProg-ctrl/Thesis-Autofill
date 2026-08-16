@@ -127,6 +127,13 @@ function mapIssueToDB(issue) {
   if (issue.aiPriority != null) row.ai_priority_score = issue.aiPriority;
   if (issue.aiPriorityLevel) row.ai_priority_level = issue.aiPriorityLevel;
   if (issue.aiLanguage) row.ai_language = issue.aiLanguage;
+  // Provenance of the priority score. Without these, a day when the inference
+  // service was down looks identical to a normal day, and a report escalated
+  // by the keyword safety floor is indistinguishable from one the model
+  // judged. See supabase/migration_002_ai_provenance.sql.
+  if (issue.aiPrioritySource) row.ai_priority_source = issue.aiPrioritySource;
+  if (issue.aiSafetyTerms) row.ai_safety_terms = issue.aiSafetyTerms;
+  if (issue.aiModelPriority) row.ai_model_priority = issue.aiModelPriority;
   if (issue.validated != null) row.validated = issue.validated;
 
   return row;

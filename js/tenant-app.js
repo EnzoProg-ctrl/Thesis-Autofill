@@ -5,7 +5,10 @@
 import { checkAuth } from './auth-guard.js';
 import { CATEGORIES, getCategoryLabel, getCategoryIcon } from './mock-data.js';
 import { loadIssues, addIssue, showModal, closeModal, showToast, escapeHtml } from './shared.js';
-import { analyzeText } from './mock-bert.js';
+// Real XLM-RoBERTa classifier. Falls back to the keyword engine in
+// mock-bert.js automatically if the inference service is unreachable, so a
+// submission is never blocked by the model being down.
+import { analyzeText } from './bert-api.js';
 import { supabase } from './supabase-client.js';
 
 (async () => {
@@ -292,6 +295,17 @@ reportForm.addEventListener('submit', async (e) => {
       aiPriority: aiResult.priorityScore,
       aiPriorityLevel: aiResult.priorityLevel,
       aiLanguage: aiResult.language,
+      // How the priority was actually reached. 'keyword' means the inference
+      // service was unreachable and the weak fallback scorer triaged this
+      // report; 'safety_floor' means danger keywords overrode a lower model
+      // prediction. Both need to be visible to whoever reviews the queue.
+      aiPrioritySource: aiResult.prioritySource || null,
+      aiSafetyTerms: aiResult.safetyOverride?.matchedTerms?.length
+        ? aiResult.safetyOverride.matchedTerms.join(',')
+        : null,
+      aiModelPriority: aiResult.safetyOverride?.applied
+        ? aiResult.safetyOverride.modelPriorityLevel
+        : null,
       validated: false,
       submittedAt: now,
       updatedAt: now,

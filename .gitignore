@@ -1,0 +1,22 @@
+# The trained checkpoint. ~1.1 GB, with a single 1068 MB file inside it.
+#
+# GitHub rejects any file over 100 MB in regular git, so this CANNOT be
+# committed here — the push would fail outright. It ships as a GitHub Release
+# asset instead (2 GB limit, free), fetched by:
+#
+#     python serving/get_model.py
+#
+# Excluded rather than left to chance: `git add -A` would otherwise stage a
+# gigabyte and fail confusingly halfway through.
+serving/model/
+serving/*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -37,10 +37,6 @@ const CATEGORY_KEYWORDS = {
     keywords: ['madumi', 'dirty', 'kalat', 'basura', 'trash', 'garbage', 'linis', 'clean', 'cleaning', 'mop', 'sweep', 'janitorial', 'restroom', 'tissue', 'soap', 'sabon', 'amoy', 'smell', 'odor', 'mabaho', 'stink', 'moldy', 'mold'],
     weight: 0.35,
   },
-  security: {
-    keywords: ['cctv', 'camera', 'security', 'guard', 'guard', 'theft', 'nakaw', 'alarm', 'lock', 'susi', 'key', 'access', 'gate', 'door lock', 'dim', 'lighting', 'suspicious', 'vandal', 'sliding door'],
-    weight: 0.55,
-  },
   it_network: {
     keywords: ['internet', 'wifi', 'wi-fi', 'network', 'connection', 'server', 'pos', 'system', 'computer', 'printer', 'bagal', 'slow', 'disconnect', 'disconnecting', 'cable', 'router', 'modem', 'bandwidth', 'signal'],
     weight: 0.5,
@@ -124,38 +120,7 @@ export async function analyzeText(text, userCategory = '', selfAssessment = 'med
   }
 
   // --- 3. Priority Scoring ---
-  let priorityScore = 30; // base
-
-  // Category severity weight
-  const catWeight = CATEGORY_KEYWORDS[bestCat]?.weight || 0.5;
-  priorityScore += catWeight * 30;
-
-  // Urgency keyword detection
-  let detectedUrgency = 'low';
-  for (const [level, keywords] of Object.entries(URGENCY_KEYWORDS)) {
-    for (const kw of keywords) {
-      if (lowerText.includes(kw)) {
-        if (level === 'critical') { priorityScore += 25; detectedUrgency = 'critical'; }
-        else if (level === 'high') { priorityScore += 15; detectedUrgency = 'high'; }
-        else if (level === 'medium') { priorityScore += 5; detectedUrgency = 'medium'; }
-        break;
-      }
-    }
-  }
-
-  // Self-assessment multiplier
-  const multiplier = SELF_ASSESS_MULTIPLIER[selfAssessment] || 1.0;
-  priorityScore = Math.round(priorityScore * multiplier);
-
-  // Clamp & add slight randomness
-  priorityScore = Math.min(99, Math.max(10, priorityScore + Math.floor(Math.random() * 8 - 4)));
-
-  // Determine priority level
-  let priorityLevel;
-  if (priorityScore >= 80) priorityLevel = 'critical';
-  else if (priorityScore >= 60) priorityLevel = 'high';
-  else if (priorityScore >= 40) priorityLevel = 'medium';
-  else priorityLevel = 'low';
+  const { priorityScore, priorityLevel } = scorePriority(text, bestCat, selfAssessment, { jitter: true });
 
   // --- 4. Generate reasoning ---
   const reasoning = generateReasoning(bestCat, matchedKeywords[bestCat] || [], priorityLevel, language, selfAssessment);
@@ -174,9 +139,63 @@ export async function analyzeText(text, userCategory = '', selfAssessment = 'med
 
 
 /**
+ * Keyword-based priority scoring.
+ *
+ * Extracted from analyzeText so the real-model path (bert-api.js) can reuse it.
+ * The trained classifier predicts CATEGORY ONLY — priority is still keyword
+ * driven, and will be until a priority model exists. Keeping one implementation
+ * means the two paths cannot drift apart.
+ *
+ * @param {string} text            Raw report text
+ * @param {string} categoryId      Category id ('electrical', 'hvac', ...)
+ * @param {string} selfAssessment  'low' | 'medium' | 'urgent'
+ * @param {{jitter?: boolean}} opts
+ *   jitter adds +/-4 points of randomness. The mock uses it so demo output
+ *   varies; the live path does NOT, because an identical report must not
+ *   receive a different priority on resubmission.
+ * @returns {{priorityScore: number, priorityLevel: string}}
+ */
+export function scorePriority(text, categoryId, selfAssessment = 'medium', { jitter = false } = {}) {
+  const lowerText = String(text).toLowerCase();
+  let priorityScore = 30; // base
+
+  // Category severity weight
+  const catWeight = CATEGORY_KEYWORDS[categoryId]?.weight || 0.5;
+  priorityScore += catWeight * 30;
+
+  // Urgency keyword detection
+  for (const [level, keywords] of Object.entries(URGENCY_KEYWORDS)) {
+    for (const kw of keywords) {
+      if (lowerText.includes(kw)) {
+        if (level === 'critical') priorityScore += 25;
+        else if (level === 'high') priorityScore += 15;
+        else if (level === 'medium') priorityScore += 5;
+        break;
+      }
+    }
+  }
+
+  // Self-assessment multiplier
+  const multiplier = SELF_ASSESS_MULTIPLIER[selfAssessment] || 1.0;
+  priorityScore = Math.round(priorityScore * multiplier);
+
+  if (jitter) priorityScore += Math.floor(Math.random() * 8 - 4);
+  priorityScore = Math.min(99, Math.max(10, priorityScore));
+
+  let priorityLevel;
+  if (priorityScore >= 80) priorityLevel = 'critical';
+  else if (priorityScore >= 60) priorityLevel = 'high';
+  else if (priorityScore >= 40) priorityLevel = 'medium';
+  else priorityLevel = 'low';
+
+  return { priorityScore, priorityLevel };
+}
+
+
+/**
  * Simple language detection heuristic
  */
-function detectLanguage(text) {
+export function detectLanguage(text) {
   const filipinoMarkers = ['po', 'namin', 'namin', 'yung', 'ang', 'ng', 'mga', 'sa', 'na', 'ko', 'nyo', 'siya', 'kami', 'sana', 'kasi', 'paki', 'parang', 'sobrang', 'hindi', 'wala', 'dito', 'doon', 'ito', 'yun', 'siguro', 'talaga', 'lalo'];
   const englishMarkers = ['the', 'is', 'are', 'was', 'been', 'have', 'has', 'our', 'their', 'please', 'need', 'should', 'would', 'could', 'from', 'with', 'this', 'that', 'which', 'been', 'about'];
 
@@ -203,7 +222,7 @@ function generateReasoning(category, keywords, priorityLevel, language, selfAsse
   const categoryLabels = {
     electrical: 'Electrical System', plumbing: 'Plumbing', hvac: 'HVAC / Air Conditioning',
     structural: 'Structural', pest: 'Pest Control', elevator: 'Elevator/Escalator',
-    fire_safety: 'Fire Safety', housekeeping: 'Housekeeping', security: 'Security',
+    fire_safety: 'Fire Safety', housekeeping: 'Housekeeping',
     it_network: 'IT/Network', other: 'General',
   };
 

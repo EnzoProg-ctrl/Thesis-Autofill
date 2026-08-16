@@ -73,6 +73,13 @@ CREATE TABLE issues (
   ai_priority_level TEXT      CHECK (ai_priority_level IN ('critical', 'high', 'medium', 'low')),
   ai_language       TEXT,
 
+  -- Provenance of ai_priority_score. See migration_002_ai_provenance.sql for
+  -- the reasoning; kept here so a fresh install matches a migrated one.
+  ai_priority_source TEXT     CHECK (ai_priority_source IS NULL
+                                     OR ai_priority_source IN ('model', 'keyword', 'safety_floor')),
+  ai_safety_terms    TEXT,
+  ai_model_priority  TEXT,
+
   -- HITL validation
   validated       BOOLEAN     NOT NULL DEFAULT false,
   validated_by    UUID        REFERENCES profiles (id) ON DELETE SET NULL,

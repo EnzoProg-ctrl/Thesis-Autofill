@@ -1,0 +1,24 @@
+# Dependencies for SERVING the FIRS classifier. Not for training.
+#
+# Deliberately excludes pandas, scikit-learn and the training/experiment code
+# in the research repo. Answering an HTTP request needs none of it, and a
+# shorter install is one fewer reason for a teammate to give up.
+
+fastapi>=0.110
+uvicorn>=0.27
+pydantic>=2.0
+transformers>=4.40
+
+# torch is NOT pinned here on purpose. The correct build depends on the
+# machine: a CPU-only box and one with an NVIDIA GPU need different wheels,
+# and pinning the wrong one gives you a torch that silently runs on CPU while
+# reporting success. Install it first, separately:
+#
+#   CPU only (fine for serving — a report takes ~250 ms):
+#     pip install torch --index-url https://download.pytorch.org/whl/cpu
+#
+#   NVIDIA GPU:
+#     pip install torch --index-url https://download.pytorch.org/whl/cu124
+#
+# Verify with:
+#   python -c "import torch; print(torch.__version__, torch.cuda.is_available())"

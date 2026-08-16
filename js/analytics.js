@@ -28,7 +28,6 @@ const CATEGORY_COLORS = {
   elevator: '#10b981',
   fire_safety: '#f97316',
   housekeeping: '#6366f1',
-  security: '#ec4899',
   it_network: '#14b8a6',
 };
 
@@ -42,7 +41,6 @@ const ESTIMATED_COST_PER_ISSUE = {
   elevator: 6000,
   fire_safety: 4500,
   housekeeping: 800,
-  security: 2000,
   it_network: 3000,
 };
 
