@@ -26,15 +26,33 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r serving/requirements.txt
 ```
 
-**3. Fetch the model** (~1.1 GB, once):
-
-```bash
-python serving/get_model.py
-```
+**3. Fetch the model** (~1.1 GB, once).
 
 It is not in the repository because its largest file is 1068 MB and GitHub
-rejects anything over 100 MB in git. It ships as a Release asset; the script
-downloads, checksums and extracts it.
+rejects anything over 100 MB in git. It ships as a Release asset instead.
+
+**This repository is private**, so an unauthenticated download returns 404 even
+though you can see the release fine in your browser. Pick either:
+
+*Option A — browser (simplest, no token):*
+
+1. Open <https://github.com/EnzoProg-ctrl/Thesis-Autofill/releases/tag/model-v1>
+2. Download `firs-model-f7-fp16.zip` and save it into `serving/`
+3. Run `python serving/get_model.py` — it finds the local file, verifies the
+   checksum and extracts it without downloading anything
+
+*Option B — token (one command):*
+
+```bash
+GITHUB_TOKEN=ghp_xxx python serving/get_model.py
+```
+
+Create a token at <https://github.com/settings/tokens> with `repo` scope
+(classic) or read access to this repository (fine-grained).
+
+Either way the checksum is verified. A truncated checkpoint does **not** crash
+on load — it produces confident nonsense — so don't skip the script and extract
+the zip by hand.
 
 **4. Run:**
 

@@ -30,6 +30,8 @@ what it downloaded instead of trusting it.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import shutil
 import sys
 import urllib.request
@@ -40,9 +42,11 @@ HERE = Path(__file__).resolve().parent
 MODEL_DIR = HERE / "model"
 ARCHIVE = HERE / "firs-model-f7-fp16.zip"
 
+OWNER = "EnzoProg-ctrl"
+REPO = "Thesis-Autofill"
 RELEASE_TAG = "model-v1"
 ASSET = "firs-model-f7-fp16.zip"
-URL = (f"https://github.com/EnzoProg-ctrl/Thesis-Autofill/releases/download/"
+URL = (f"https://github.com/{OWNER}/{REPO}/releases/download/"
        f"{RELEASE_TAG}/{ASSET}")
 
 # Verified against the fp32 checkpoint over all 1788 test rows: 0 category and
@@ -64,10 +68,49 @@ def _progress(done: int, total: int) -> None:
     sys.stdout.flush()
 
 
+def _asset_url() -> tuple[str, dict]:
+    """Resolve the download URL, authenticating if this is a private repo.
+
+    Thesis-Autofill is PRIVATE, so the public browser_download_url returns 404
+    to anyone unauthenticated — including teammates who can see the release
+    perfectly well in their browser. For private repos the asset must be
+    fetched through the API by its numeric id, with a token and an
+    octet-stream Accept header.
+
+    Set GITHUB_TOKEN to a classic token with `repo` scope, or a fine-grained
+    token with read access to this repository:
+        https://github.com/settings/tokens
+    """
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if not token:
+        return URL, {}
+
+    api = (f"https://api.github.com/repos/{OWNER}/{REPO}/releases/tags/"
+           f"{RELEASE_TAG}")
+    req = urllib.request.Request(api, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "firs-get-model",
+    })
+    with urllib.request.urlopen(req) as r:
+        rel = json.load(r)
+    for a in rel.get("assets", []):
+        if a["name"] == ASSET:
+            return a["url"], {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/octet-stream",
+                "User-Agent": "firs-get-model",
+            }
+    sys.exit(f"Release {RELEASE_TAG} exists but has no asset named {ASSET}.")
+
+
 def download() -> None:
-    print(f"downloading {ASSET} (~1.1 GB)\n  from {URL}")
+    url, headers = _asset_url()
+    auth = " (authenticated)" if headers else ""
+    print(f"downloading {ASSET} (~1.1 GB){auth}")
     try:
-        with urllib.request.urlopen(URL) as r, open(ARCHIVE, "wb") as f:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req) as r, open(ARCHIVE, "wb") as f:
             total = int(r.headers.get("Content-Length", 0))
             done = 0
             while chunk := r.read(1 << 20):
@@ -79,12 +122,17 @@ def download() -> None:
         ARCHIVE.unlink(missing_ok=True)
         sys.exit(
             f"\nDownload failed: {exc}\n\n"
-            f"If this is a 404, the release does not exist yet. Whoever set the\n"
-            f"project up needs to create it once:\n"
-            f"  1. GitHub -> Releases -> Draft a new release\n"
-            f"  2. Tag: {RELEASE_TAG}\n"
-            f"  3. Attach: {ASSET}\n"
-            f"Or download it manually and place it at {ARCHIVE}, then re-run this."
+            f"This repository is PRIVATE, so the download needs authentication.\n"
+            f"Two options:\n\n"
+            f"  A) Set a token and re-run:\n"
+            f"       GITHUB_TOKEN=ghp_xxx python serving/get_model.py\n"
+            f"     Create one at https://github.com/settings/tokens with `repo`\n"
+            f"     scope (classic) or read access to this repo (fine-grained).\n\n"
+            f"  B) Download it in your browser — you are already signed in:\n"
+            f"       https://github.com/{OWNER}/{REPO}/releases/tag/{RELEASE_TAG}\n"
+            f"     Save it as:\n       {ARCHIVE}\n"
+            f"     then re-run this script. It will verify and extract the\n"
+            f"     local file without downloading anything."
         )
 
 
