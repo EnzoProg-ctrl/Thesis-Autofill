@@ -1,5 +1,19 @@
 /* ============================================================
-   Data Constants — Categories, Priorities, Statuses, Analytics
+   App Data — Categories, Priorities, Statuses, Profile queries
+
+   The app's real taxonomy plus live Supabase reads. Nothing here is
+   mock data.
+
+   CATEGORIES is the authority for category ids: serving/serve.py maps
+   the model's own class names onto these ids in LABEL_TO_SYSTEM_ID, and
+   the two must agree. These 7 now match the model's 7 classes exactly.
+
+   'elevator' ("Escalator") was removed on 2026-08-17. It was the one
+   category the model could never emit — lift and escalator complaints
+   were trained as 'Other' — so it only ever collected reports the AI
+   had already labelled something else. Any report already stored with
+   category 'elevator' still displays; getCategoryLabel() falls back to
+   the raw id for ids it does not recognise.
    ============================================================ */
 
 import { CATEGORY_ICONS } from './icons.js';
@@ -10,7 +24,6 @@ export const CATEGORIES = [
   { id: 'plumbing', label: 'Plumbing', icon: CATEGORY_ICONS.plumbing },
   { id: 'hvac', label: 'Air Conditioning', icon: CATEGORY_ICONS.hvac },
   { id: 'structural', label: 'Structural', icon: CATEGORY_ICONS.structural },
-  { id: 'elevator', label: 'Escalator', icon: CATEGORY_ICONS.elevator },
   { id: 'fire_safety', label: 'Fire Safety', icon: CATEGORY_ICONS.fire_safety },
   { id: 'housekeeping', label: 'Housekeeping', icon: CATEGORY_ICONS.housekeeping },
   { id: 'other', label: 'Other', icon: CATEGORY_ICONS.other },
@@ -28,44 +41,6 @@ export const STATUS_LIST = [
   { id: 'in_progress', label: 'In Progress', color: '#0ea5e9' },
   { id: 'resolved', label: 'Resolved', color: '#22c55e' },
 ];
-
-/* ---------- Historical Data for Analytics (Weekly — 7 days, Mon–Sun) ---------- */
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-export const HISTORICAL_DATA = {
-  days: DAY_LABELS,
-  issuesByDay: [0, 0, 0, 0, 0, 0, 0],
-  categoryTrends: {
-    electrical: [0, 0, 0, 0, 0, 0, 0],
-    plumbing: [0, 0, 0, 0, 0, 0, 0],
-    hvac: [0, 0, 0, 0, 0, 0, 0],
-    structural: [0, 0, 0, 0, 0, 0, 0],
-    pest: [0, 0, 0, 0, 0, 0, 0],
-    elevator: [0, 0, 0, 0, 0, 0, 0],
-    fire_safety: [0, 0, 0, 0, 0, 0, 0],
-    housekeeping: [0, 0, 0, 0, 0, 0, 0],
-    it_network: [0, 0, 0, 0, 0, 0, 0],
-  },
-  priorityTrends: {
-    critical: [0, 0, 0, 0, 0, 0, 0],
-    high: [0, 0, 0, 0, 0, 0, 0],
-    medium: [0, 0, 0, 0, 0, 0, 0],
-    low: [0, 0, 0, 0, 0, 0, 0],
-  },
-  avgResolutionTime: {
-    electrical: 0, plumbing: 0, hvac: 0, structural: 0,
-    pest: 0, elevator: 0, fire_safety: 0, housekeeping: 0,
-    it_network: 0,
-  },
-  aiAccuracy: [0, 0, 0, 0, 0, 0, 0],
-  budgetByCategory: {
-    electrical: 0, plumbing: 0, hvac: 0, structural: 0,
-    pest: 0, elevator: 0, fire_safety: 0, housekeeping: 0,
-    it_network: 0,
-  },
-};
-
 
 /* ---------- Supabase Helpers: Profiles ---------- */
 

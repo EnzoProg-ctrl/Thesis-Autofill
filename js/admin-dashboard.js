@@ -4,8 +4,8 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './mock-data.js';
+import { loadIssues, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
 // Allow both admin and staff roles to access admin pages.
@@ -59,6 +59,7 @@ async function initDashboard() {
   bindEvents();
   startAutoRefresh();
   personalizeTopbar();
+  initImageLightbox();
 }
 
 /* ==========================================================
@@ -81,13 +82,12 @@ function applyRBAC() {
   }
 }
 
-function personalizeTopbar() {
-  if (!currentUser) return;
-  const avatarEl = document.querySelector('.topbar-avatar');
-  const nameEl = document.querySelector('.topbar-user span:last-child');
-  if (avatarEl) avatarEl.textContent = currentUser.avatar || currentUser.name.substring(0, 3);
-  if (nameEl) nameEl.textContent = currentUser.name || 'User';
-}
+/* The role pill (.topbar-role) is static markup; only the name is filled in.
+   This used to also rewrite the pill with currentUser.avatar, which is what
+   made it flip from its hardcoded placeholder to "SA" a moment after load —
+   avatar_initials is 'SA' for every admin, so that rewrite carried no
+   information at all. */
+function personalizeTopbar() { renderTopbarUser(); }
 
 /* ==========================================================
    KPI Calculation
@@ -252,10 +252,19 @@ function renderKanban() {
     body.addEventListener('dragleave', handleDragLeave);
     body.addEventListener('drop', handleDrop);
 
-    // Sort by latest activity (most recent first), tiebreak by priority
+    // Sort by AI priority (most severe first), tiebreak by latest activity.
+    //
+    // These two keys used to be the other way round, which silently disabled
+    // the priority sort: getLatestActivityTime returns a millisecond epoch, so
+    // two reports practically never tie and the priority comparison was never
+    // reached. The board looked sorted, just by recency — a Critical filed an
+    // hour ago sat below a Low filed a minute ago.
+    //
+    // Severity leads here to match the staff board (staff-dashboard.js), so an
+    // admin and a technician looking at the same column see the same order.
     colIssues.sort((a, b) => {
-      const timeDiff = getLatestActivityTime(b) - getLatestActivityTime(a);
-      return timeDiff !== 0 ? timeDiff : (b.aiPriority || 0) - (a.aiPriority || 0);
+      const priDiff = (b.aiPriority || 0) - (a.aiPriority || 0);
+      return priDiff !== 0 ? priDiff : getLatestActivityTime(b) - getLatestActivityTime(a);
     });
 
     if (colIssues.length === 0) {
@@ -379,7 +388,11 @@ function renderTable() {
     let aVal, bVal;
     switch (sortColumn) {
       case 'id':
-        aVal = a.id; bVal = b.id; break;
+        // Sort by the ticket number the cell actually displays, not the UUID —
+        // sorting by id ordered rows by a value that appears nowhere on screen.
+        aVal = (a.ticketNumber || '').toLowerCase();
+        bVal = (b.ticketNumber || '').toLowerCase();
+        break;
       case 'tenant':
         aVal = (a.storeName || '').toLowerCase();
         bVal = (b.storeName || '').toLowerCase();
@@ -530,7 +543,7 @@ function openIssueDetail(issueId) {
     <!-- Attached Photo -->
     <div style="margin-bottom: var(--sp-5);">
       <div class="text-xs font-semibold text-muted" style="text-transform:uppercase; letter-spacing:0.05em; margin-bottom: var(--sp-2);">Attached Photo</div>
-      <img src="${issue.imageUrl}" alt="Issue photo" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:pointer;" onclick="window.open(this.src,'_blank')">
+      <img src="${issue.imageUrl}" alt="Issue photo" data-lightbox title="Click to enlarge" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:zoom-in;">
     </div>
     ` : ''}
 
@@ -636,18 +649,7 @@ function bindEvents() {
   });
 
   // Mobile sidebar
-  const toggleBtn = document.getElementById('sidebar-toggle');
-  const sidebar = document.getElementById('sidebar');
-  if (toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
-    document.querySelector('.admin-content').addEventListener('click', () => {
-      if (sidebar.classList.contains('open')) {
-        sidebar.classList.remove('open');
-      }
-    });
-  }
+  initSidebarToggle();
 
   // Manage Users — admin only
   const manageUsersLink = document.getElementById('manage-users-link');

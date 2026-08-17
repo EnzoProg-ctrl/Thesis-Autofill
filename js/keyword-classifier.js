@@ -1,6 +1,22 @@
 /* ============================================================
-   Simulated BERT NLP Classification Engine
-   Processes Taglish/Filipino/English text for facility issues
+   Keyword Classification Engine
+   Processes Taglish/Filipino/English text for facility issues.
+
+   NOT a mock. Three live roles, only one of which is a fallback:
+
+     detectLanguage  runs on EVERY report, including ones the trained
+                     model answered — XLM-RoBERTa has no language head,
+                     so this is the app's only language source.
+     scorePriority   used when a checkpoint returns no priority (the
+                     current one has a priority head, so this is dormant).
+     analyzeText     the fallback path in bert-api.js, used when the
+                     inference service is unreachable or times out.
+
+   The fallback is markedly weaker on Taglish than the model — it rated
+   "May naipit na tao sa pinto" (a person trapped in a door) at 38/low.
+   That is why bert-api.js applies the safety floor on this path too, and
+   why reports triaged here are recorded as ai_priority_source='keyword'
+   rather than looking identical to model-judged ones.
    ============================================================ */
 
 /* --- Keyword Dictionaries --- */
@@ -24,10 +40,6 @@ const CATEGORY_KEYWORDS = {
   pest: {
     keywords: ['ipis', 'cockroach', 'daga', 'rat', 'mouse', 'mice', 'langgam', 'ant', 'ants', 'insect', 'insekto', 'pest', 'fumigation', 'bug', 'termite', 'anay', 'mosquito', 'lamok', 'spider', 'gagamba', 'infestation'],
     weight: 0.5,
-  },
-  elevator: {
-    keywords: ['elevator', 'escalator', 'lift', 'stuck', 'huminto', 'hinto', 'stopped', 'moving', 'button', 'floor indicator', 'overloaded'],
-    weight: 0.8,
   },
   fire_safety: {
     keywords: ['fire', 'sunog', 'nasusunog', 'smoke', 'usok', 'extinguisher', 'alarm', 'sprinkler', 'emergency', 'exit', 'detector', 'smoke detector', 'expired', 'fire exit', 'evacuation', 'nag-beep'],
@@ -60,7 +72,8 @@ const SELF_ASSESS_MULTIPLIER = {
 
 
 /**
- * Simulated BERT analysis — processes unstructured Taglish text
+ * Keyword analysis — processes unstructured Taglish text.
+ * The fallback used when the inference service is unreachable.
  * @param {string} text - The raw issue description
  * @param {string} userCategory - User-selected category (optional hint)
  * @param {string} selfAssessment - User self-assessed urgency: 'low'|'medium'|'urgent'
@@ -142,17 +155,18 @@ export async function analyzeText(text, userCategory = '', selfAssessment = 'med
  * Keyword-based priority scoring.
  *
  * Extracted from analyzeText so the real-model path (bert-api.js) can reuse it.
- * The trained classifier predicts CATEGORY ONLY — priority is still keyword
- * driven, and will be until a priority model exists. Keeping one implementation
- * means the two paths cannot drift apart.
+ * The current checkpoint HAS a priority head, so the model supplies priority
+ * and this runs only against a category-only checkpoint that returns
+ * priority: null. Keeping one implementation means the two paths cannot drift
+ * apart when that happens.
  *
  * @param {string} text            Raw report text
  * @param {string} categoryId      Category id ('electrical', 'hvac', ...)
  * @param {string} selfAssessment  'low' | 'medium' | 'urgent'
  * @param {{jitter?: boolean}} opts
- *   jitter adds +/-4 points of randomness. The mock uses it so demo output
- *   varies; the live path does NOT, because an identical report must not
- *   receive a different priority on resubmission.
+ *   jitter adds +/-4 points of randomness. The fallback analyzeText path uses
+ *   it so output varies; the live path does NOT, because an identical report
+ *   must not receive a different priority on resubmission.
  * @returns {{priorityScore: number, priorityLevel: string}}
  */
 export function scorePriority(text, categoryId, selfAssessment = 'medium', { jitter = false } = {}) {
@@ -221,7 +235,7 @@ export function detectLanguage(text) {
 function generateReasoning(category, keywords, priorityLevel, language, selfAssessment) {
   const categoryLabels = {
     electrical: 'Electrical System', plumbing: 'Plumbing', hvac: 'HVAC / Air Conditioning',
-    structural: 'Structural', pest: 'Pest Control', elevator: 'Elevator/Escalator',
+    structural: 'Structural', pest: 'Pest Control',
     fire_safety: 'Fire Safety', housekeeping: 'Housekeeping',
     it_network: 'IT/Network', other: 'General',
   };

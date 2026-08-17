@@ -4,7 +4,7 @@
    keyword logic for priority and language.
    ============================================================ */
 
-import { analyzeText as analyzeTextMock, scorePriority, detectLanguage } from './mock-bert.js';
+import { analyzeText as analyzeTextKeyword, scorePriority, detectLanguage } from './keyword-classifier.js';
 
 /* Inference service (RobertaTraining/serve.py).
 
@@ -25,19 +25,21 @@ const API_BASE = (typeof window !== 'undefined' && window.FIRS_API_BASE)
   || 'http://127.0.0.1:8000';
 
 /* A tenant reporting a burst pipe must never be blocked by a model service.
-   If inference has not answered in this long, give up and use the mock. */
+   If inference has not answered in this long, give up and use the keyword
+   classifier. */
 const TIMEOUT_MS = 8000;
 
-/* Category ids the model can emit. The app defines a 9th, 'elevator'
-   ("Escalator"), which the model was never trained on — lift and escalator
-   complaints were labelled 'Other'. Until that class is added and the model
-   retrained, those reports arrive as Other. Listed here so the gap is visible
-   in the code rather than only in a document. */
+/* Category ids the model can emit. As of 2026-08-17 this matches the app's
+   CATEGORIES list exactly (app-data.js) — the 'elevator' category, which the
+   model was never trained on, was removed from the app rather than left as a
+   choice the AI could never return. Nothing is unsupported now; keep the empty
+   list so the check has somewhere to grow if a class is ever added to the app
+   ahead of the model. */
 export const MODEL_CATEGORY_IDS = [
   'electrical', 'plumbing', 'hvac', 'structural',
   'fire_safety', 'housekeeping', 'other',
 ];
-export const UNSUPPORTED_CATEGORY_IDS = ['elevator'];
+export const UNSUPPORTED_CATEGORY_IDS = [];
 
 
 /* ============================================================
@@ -72,8 +74,8 @@ export const UNSUPPORTED_CATEGORY_IDS = ['elevator'];
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, critical: 3 };
 
 const SAFETY_FLOOR_LEVEL = 'high';
-/* Bottom of the app's High band (mock-bert.js scorePriority bands: >=80
-   critical, >=60 high, >=40 medium). The floor lifts to exactly this and not
+/* Bottom of the app's High band (keyword-classifier.js scorePriority bands:
+   >=80 critical, >=60 high, >=40 medium). The floor lifts to exactly this and not
    to the 70 band centre — the claim is "at least High", and 70 would assert a
    confidence the floor has not earned. */
 const SAFETY_FLOOR_SCORE = 60;
@@ -183,7 +185,7 @@ export function applySafetyFloor(text, priorityScore, priorityLevel) {
 
 
 /**
- * Classify a report. Signature and return shape match mock-bert.analyzeText,
+ * Classify a report. Signature and return shape match keyword-classifier.analyzeText,
  * so this is a drop-in replacement.
  *
  * @param {string} text
@@ -198,8 +200,8 @@ export async function analyzeText(text, userCategory = '', selfAssessment = 'med
     prediction = await callInferenceService(text, userCategory);
   } catch (err) {
     // Degrade to the keyword engine rather than failing the submission.
-    console.warn('[bert-api] inference unavailable, falling back to mock:', err.message);
-    const fallback = await analyzeTextMock(text, userCategory, selfAssessment);
+    console.warn('[bert-api] inference unavailable, falling back to keyword classifier:', err.message);
+    const fallback = await analyzeTextKeyword(text, userCategory, selfAssessment);
     // The floor applies here too. The keyword scorer is the weakest path in
     // the system and the one running when the service is down, so it is the
     // path that most needs a guaranteed minimum.

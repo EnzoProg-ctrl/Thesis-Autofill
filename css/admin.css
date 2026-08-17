@@ -180,17 +180,22 @@
   color: var(--gray-600);
 }
 
-.admin-topbar .topbar-avatar {
-  width: 32px;
+/* Role pill. Replaces the old .topbar-avatar initials circle, which showed a
+   different set of initials on every page and was overwritten by JS
+   after load, so the label visibly changed a moment after the page painted.
+   This is a static role name — nothing rewrites it, so there is no flicker. */
+.admin-topbar .topbar-role {
   height: 32px;
+  padding: 0 var(--sp-4);
   background: var(--primary-100);
   color: var(--primary-700);
-  border-radius: 50%;
-  display: flex;
+  border-radius: 999px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: var(--text-sm);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Mobile sidebar toggle */

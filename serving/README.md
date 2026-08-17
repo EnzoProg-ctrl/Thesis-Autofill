@@ -4,8 +4,8 @@ Serves the trained classifier that the tenant form calls. Category, priority,
 and a deterministic keyword safety floor.
 
 Without this running the app still works — `js/bert-api.js` falls back to the
-keyword scorer in `js/mock-bert.js`. **It does not announce that it has done
-so.** The fallback is much weaker on Taglish (it rated *"May naipit na tao sa
+keyword scorer in `js/keyword-classifier.js`. **It does not announce that it
+has done so.** The fallback is much weaker on Taglish (it rated *"May naipit na tao sa
 pinto"* — a person trapped in a door — at 38/low), so a system that looks
 healthy while running it is the main risk this README exists to prevent.
 

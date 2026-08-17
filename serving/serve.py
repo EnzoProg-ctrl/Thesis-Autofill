@@ -6,7 +6,7 @@ HTTP inference service for the Nepo Mall FIRS category classifier.
 Why this exists
 ---------------
 The web app calls its classifier as a browser-side ES module
-(``js/mock-bert.js``). The trained model is a 2.2 GB XLM-RoBERTa-large
+(``js/keyword-classifier.js``). The trained model is a 2.2 GB XLM-RoBERTa-large
 checkpoint and cannot run client-side, so the browser has to call a service
 that holds the model warm instead.
 
@@ -96,12 +96,13 @@ CATEGORY_TEMPERATURE = 1.204
 PRIORITY_TEMPERATURE = 2.481
 
 # The model's own class names -> the category ids used by the web app
-# (js/mock-data.js CATEGORIES). Only "hvac" differs in spelling.
+# (js/app-data.js CATEGORIES). Only "hvac" differs in spelling.
 #
-# KNOWN GAP: the app defines an "elevator" category (labelled "Escalator") that
-# this model cannot produce — lift/escalator complaints were trained as "Other".
-# Those reports arrive as Other until the class is added and the model
-# retrained. Documented rather than silently mapped.
+# The app's CATEGORIES and this mapping now line up exactly, 7 for 7. The app
+# previously carried an extra "elevator" ("Escalator") category that this model
+# could never produce — lift/escalator complaints were trained as "Other" — and
+# it was removed from the app on 2026-08-17 rather than left as a choice the
+# classifier could not return.
 #
 # "Security" was removed from the taxonomy on 2026-08-13. A checkpoint trained
 # before that date still emits it and will fail the startup check below — that
@@ -147,8 +148,8 @@ PRIORITY_RANK = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
 # test_safety_floor.py, which parses both files and fails if they drift.
 
 SAFETY_FLOOR_LABEL = "High"
-# The bottom of the app's High band (js/mock-bert.js scorePriority: >=80
-# critical, >=60 high, >=40 medium). The floor lifts to exactly this, not to
+# The bottom of the app's High band (js/keyword-classifier.js scorePriority:
+# >=80 critical, >=60 high, >=40 medium). The floor lifts to exactly this, not to
 # the band centre of 70 — the claim being made is "at least High", and 70
 # would assert a confidence the floor has not earned.
 SAFETY_FLOOR_SCORE = 60

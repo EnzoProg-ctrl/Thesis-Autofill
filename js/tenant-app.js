@@ -3,11 +3,11 @@
    ============================================================ */
 
 import { checkAuth } from './auth-guard.js';
-import { CATEGORIES, getCategoryLabel, getCategoryIcon } from './mock-data.js';
+import { CATEGORIES, getCategoryLabel, getCategoryIcon } from './app-data.js';
 import { loadIssues, addIssue, showModal, closeModal, showToast, escapeHtml } from './shared.js';
 // Real XLM-RoBERTa classifier. Falls back to the keyword engine in
-// mock-bert.js automatically if the inference service is unreachable, so a
-// submission is never blocked by the model being down.
+// keyword-classifier.js automatically if the inference service is
+// unreachable, so a submission is never blocked by the model being down.
 import { analyzeText } from './bert-api.js';
 import { supabase } from './supabase-client.js';
 
@@ -328,10 +328,10 @@ reportForm.addEventListener('submit', async (e) => {
     // Priority badge class
     const priorityBadgeClass = `priority-badge ${aiResult.priorityLevel}`;
 
-    // Confidence bar class
-    let confBarClass = 'high';
-    if (aiResult.confidence < 70) confBarClass = 'low';
-    else if (aiResult.confidence < 85) confBarClass = 'medium';
+    // Confidence is deliberately NOT shown to tenants — it is an internal
+    // review signal for the HITL queue, not something a reporter can act on.
+    // It is still saved to the database (aiConfidence above) and still drives
+    // the admin review screens.
 
     // Update modal with confirmation
     const modalBody = overlay.querySelector('.modal-body');
@@ -348,18 +348,6 @@ reportForm.addEventListener('submit', async (e) => {
       <div class="confirmation-detail">
         <span class="label">AI-Detected Category</span>
         <span class="value">${getCategoryIcon(aiResult.category)} ${escapeHtml(getCategoryLabel(aiResult.category))}</span>
-      </div>
-      <div class="confirmation-detail">
-        <span class="label">AI Confidence</span>
-        <span class="value">${aiResult.confidence}%</span>
-      </div>
-      <div class="confirmation-detail" style="border-bottom:none;padding-bottom:0;">
-        <span class="label" style="align-self:center;">Confidence</span>
-        <span class="value" style="flex:1;max-width:180px;">
-          <div class="confidence-bar">
-            <div class="confidence-bar-fill ${confBarClass}" style="width:${aiResult.confidence}%"></div>
-          </div>
-        </span>
       </div>
       <div class="confirmation-detail">
         <span class="label">Priority Level</span>

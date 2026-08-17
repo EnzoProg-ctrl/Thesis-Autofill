@@ -13,8 +13,8 @@
 --  Three different things can set it, and they are not equally trustworthy:
 --
 --    'model'         the trained XLM-R priority head
---    'keyword'       the fallback scorer in js/mock-bert.js, used when the
---                    inference service is unreachable. It is markedly worse on
+--    'keyword'       the fallback scorer in js/keyword-classifier.js, used
+--                    when the service is unreachable. It is markedly worse on
 --                    Taglish — it scored "May naipit na tao sa pinto"
 --                    (a person is trapped in a door) at 38/low.
 --    'safety_floor'  the deterministic keyword floor raised it to High

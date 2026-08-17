@@ -14,7 +14,7 @@ function svg(paths, size = 18) {
 }
 
 /* ──────────────────────────────────────────────
-   Category Icons (mapped to CATEGORIES in mock-data.js)
+   Category Icons (mapped to CATEGORIES in app-data.js)
    ────────────────────────────────────────────── */
 
 export const CATEGORY_ICONS = {

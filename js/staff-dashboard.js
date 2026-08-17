@@ -4,8 +4,8 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, formatDate, formatRelativeTime, showToast, showSlideOver, closeSlideOver, escapeHtml, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo } from './mock-data.js';
+import { loadIssues, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, showToast, showSlideOver, closeSlideOver, escapeHtml, openEditAdminProfileModal } from './shared.js';
+import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard — staff only ---------- */
 if (!(await checkAuth('staff'))) {
@@ -17,6 +17,7 @@ let currentUser = null;
 try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
 
 let issues = [];
+let staffMap = {};                   // id -> profile, for the Assigned To column
 let currentView = 'kanban';
 let sortColumn = 'submitted';
 let sortAsc = false;
@@ -34,6 +35,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     issues = [];
   }
 
+  // Needed to resolve assignedTo ids into names for the table's Assigned To
+  // column. Non-fatal: an empty staffMap just renders every row "Unassigned".
+  try {
+    const staffList = await getUsers();
+    if (staffList) staffList.forEach(s => staffMap[s.id] = s);
+  } catch (err) {
+    console.error('Staff load error:', err);
+  }
+
   populateFilters();
   renderKPIs();
   renderCurrentView();
@@ -43,13 +53,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ---------- Topbar Personalization ---------- */
-function personalizeTopbar() {
-  if (!currentUser) return;
-  const avatarEl = document.querySelector('.topbar-avatar');
-  const nameEl = document.querySelector('.topbar-user span:last-child');
-  if (avatarEl) avatarEl.textContent = currentUser.avatar || currentUser.name?.substring(0, 2) || 'ST';
-  if (nameEl) nameEl.textContent = currentUser.name || 'Staff';
-}
+/* The role pill (.topbar-role) is static markup; only the name is filled in.
+   See admin-dashboard.js for why the old initials rewrite was dropped. */
+function personalizeTopbar() { renderTopbarUser(); }
 
 /* ---------- KPIs ---------- */
 function renderKPIs() {
@@ -148,7 +154,14 @@ function renderKanban() {
     body.addEventListener('dragleave', handleDragLeave);
     body.addEventListener('drop', handleDrop);
 
-    colIssues.sort((a, b) => (b.aiPriority || 0) - (a.aiPriority || 0));
+    // Same ordering as the admin board (admin-dashboard.js): severity first,
+    // then latest activity. Without the tiebreak, equal-priority cards fell
+    // back to whatever order loadIssues returned, so the two boards could
+    // still disagree on the ordering within a priority band.
+    colIssues.sort((a, b) => {
+      const priDiff = (b.aiPriority || 0) - (a.aiPriority || 0);
+      return priDiff !== 0 ? priDiff : getLatestActivityTime(b) - getLatestActivityTime(a);
+    });
 
     if (colIssues.length === 0) {
       body.innerHTML = `<div class="empty-state" style="padding: var(--sp-6) var(--sp-2);"><div class="empty-state-text">No issues</div></div>`;
@@ -251,49 +264,98 @@ async function handleDrop(e) {
    Data Table
    ========================================================== */
 
+/* Kept deliberately identical to admin-dashboard.js renderTable() — same
+   columns, same cell markup, same sort keys. The two used to drift: this one
+   sorted Category by the raw id ("hvac") instead of the visible label ("Air
+   Conditioning"), and Status alphabetically ("awaiting_review" < "in_progress"
+   < "resolved" only by luck) rather than by workflow order. */
 function renderTable() {
   const tbody = document.getElementById('table-body');
-  let filtered = getFilteredIssues();
+  const filtered = getFilteredIssues();
 
-  // Sort
-  filtered.sort((a, b) => {
-    let valA, valB;
+  // Copy before sorting: getFilteredIssues() returns a fresh array today, but
+  // sorting in place would reorder the caller's data if that ever changes.
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal, bVal;
     switch (sortColumn) {
-      case 'id': valA = a.ticketNumber || ''; valB = b.ticketNumber || ''; break;
-      case 'tenant': valA = a.storeName || ''; valB = b.storeName || ''; break;
-      case 'category': valA = a.aiCategory || ''; valB = b.aiCategory || ''; break;
-      case 'priority': valA = a.aiPriority || 0; valB = b.aiPriority || 0; break;
-      case 'status': valA = a.status || ''; valB = b.status || ''; break;
-      case 'submitted': valA = a.submittedAt || ''; valB = b.submittedAt || ''; break;
-      default: valA = ''; valB = '';
+      case 'id':
+        // Sort by the ticket number the cell actually displays, not the UUID.
+        aVal = (a.ticketNumber || '').toLowerCase();
+        bVal = (b.ticketNumber || '').toLowerCase();
+        break;
+      case 'tenant':
+        aVal = (a.storeName || '').toLowerCase();
+        bVal = (b.storeName || '').toLowerCase();
+        break;
+      case 'category':
+        aVal = getCategoryLabel(a.aiCategory).toLowerCase();
+        bVal = getCategoryLabel(b.aiCategory).toLowerCase();
+        break;
+      case 'priority':
+        aVal = a.aiPriority; bVal = b.aiPriority; break;
+      case 'status':
+        aVal = STATUS_COLUMNS.indexOf(a.status);
+        bVal = STATUS_COLUMNS.indexOf(b.status);
+        break;
+      case 'submitted':
+        aVal = getLatestActivityTime(a);
+        bVal = getLatestActivityTime(b);
+        break;
+      case 'assigned':
+        // 'zzz' parks unassigned rows at the end of an ascending sort.
+        aVal = (staffMap[a.assignedTo]?.name || 'zzz').toLowerCase();
+        bVal = (staffMap[b.assignedTo]?.name || 'zzz').toLowerCase();
+        break;
+      default:
+        aVal = a.id; bVal = b.id;
     }
-    if (typeof valA === 'number') return sortAsc ? valA - valB : valB - valA;
-    return sortAsc ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+    if (aVal < bVal) return sortAsc ? -1 : 1;
+    if (aVal > bVal) return sortAsc ? 1 : -1;
+    // Tiebreaker: most severe first, matching the kanban columns.
+    return (b.aiPriority || 0) - (a.aiPriority || 0);
   });
 
-  if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:var(--sp-8); color:var(--gray-400);">No issues found</td></tr>`;
+  tbody.innerHTML = '';
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted p-6">No issues match the current filters.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = filtered.map(issue => {
+  sorted.forEach(issue => {
+    const tenantDisplay = escapeHtml(issue.storeName || '—');
     const priorityInfo = getPriorityInfo(issue.aiPriorityLevel);
     const statusInfo = getStatusInfo(issue.status);
-    return `
-      <tr data-id="${escapeHtml(issue.id)}" style="cursor:pointer;">
-        <td style="font-family:monospace; font-size:var(--text-xs);">${escapeHtml(issue.ticketNumber || issue.id.slice(0, 8))}</td>
-        <td>${escapeHtml(issue.storeName || '—')}</td>
-        <td>${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</td>
-        <td><span class="priority-badge ${issue.aiPriorityLevel}">${escapeHtml(priorityInfo.label)}</span></td>
-        <td><span class="status-badge ${issue.status}">${escapeHtml(statusInfo.label)}</span></td>
-        <td>${formatRelativeTime(issue.submittedAt)}</td>
-      </tr>
-    `;
-  }).join('');
+    const staff = issue.assignedTo ? staffMap[issue.assignedTo] : null;
 
-  // Row click
-  tbody.querySelectorAll('tr[data-id]').forEach(row => {
-    row.addEventListener('click', () => openIssueDetail(row.dataset.id));
+    const tr = document.createElement('tr');
+    tr.className = 'clickable';
+    tr.innerHTML = `
+      <td><span class="font-semibold">${escapeHtml(issue.ticketNumber || issue.id)}</span></td>
+      <td>${tenantDisplay}</td>
+      <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span></td>
+      <td>
+        <div class="flex items-center gap-2">
+          <span class="priority-dot ${issue.aiPriorityLevel}"></span>
+          <span class="font-semibold" style="color:${priorityInfo.color}">${issue.aiPriority}</span>
+        </div>
+      </td>
+      <td><span class="status-badge" style="color:${statusInfo.color}">${escapeHtml(statusInfo.label)}</span></td>
+      <td class="text-sm text-muted">${formatActivityTime(issue)}</td>
+      <td>${staff ? escapeHtml(staff.name) : '<span class="text-muted">Unassigned</span>'}</td>
+    `;
+    tr.addEventListener('click', () => openIssueDetail(issue.id));
+    tbody.appendChild(tr);
+  });
+
+  // Update sort header styling. This was missing here, so the staff table's
+  // arrows stayed "↕" no matter which column was sorted.
+  document.querySelectorAll('#data-table th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === sortColumn);
+    const icon = th.querySelector('.sort-icon');
+    if (icon) {
+      icon.textContent = th.dataset.sort === sortColumn ? (sortAsc ? '↑' : '↓') : '↕';
+    }
   });
 }
 
@@ -410,14 +472,7 @@ function bindEvents() {
   });
 
   // Mobile sidebar
-  const toggleBtn = document.getElementById('sidebar-toggle');
-  const sidebar = document.getElementById('sidebar');
-  if (toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
-    document.querySelector('.admin-content')?.addEventListener('click', () => {
-      if (sidebar.classList.contains('open')) sidebar.classList.remove('open');
-    });
-  }
+  initSidebarToggle();
 
   // Edit profile
   document.getElementById('edit-profile-link')?.addEventListener('click', async (e) => {

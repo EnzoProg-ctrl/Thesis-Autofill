@@ -418,9 +418,9 @@
       }
       privacyBox.classList.remove('error');
 
-      // Check if email is PMO domain
+      // Check if email is an internal (admin/staff) domain
       if (email.endsWith('@nepomall.com') || email.endsWith('@nepomall-pmo.com')) {
-        return showError('PMO accounts cannot be registered here. Contact administration.');
+        return showError('Admin accounts cannot be registered here. Contact administration.');
       }
 
       registerBtn.disabled = true;

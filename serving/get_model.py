@@ -21,10 +21,10 @@ So the setup is `git pull` plus this one command, rather than `git pull` alone.
 What happens without it
 -----------------------
 The web app does NOT crash. js/bert-api.js falls back to the keyword scorer in
-js/mock-bert.js and the UI looks entirely healthy — while running a markedly
-worse classifier that rated "May naipit na tao sa pinto" (a person trapped in a
-door) at 38/low. That silent degradation is the reason this script verifies
-what it downloaded instead of trusting it.
+js/keyword-classifier.js and the UI looks entirely healthy — while running a
+markedly worse classifier that rated "May naipit na tao sa pinto" (a person
+trapped in a door) at 38/low. That silent degradation is the reason this script
+verifies what it downloaded instead of trusting it.
 """
 
 from __future__ import annotations

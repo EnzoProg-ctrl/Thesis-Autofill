@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Nepo Mall FIRS — PMO Decision-Support Dashboard">
+  <meta name="description" content="Nepo Mall FIRS — Admin Decision-Support Dashboard">
   <title>Dashboard — Nepo Mall FIRS</title>
   <link rel="stylesheet" href="../css/design-system.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -22,7 +22,7 @@
           <div class="logo-icon">N</div>
           <div>
             <div class="logo-text">Nepo Mall</div>
-            <div class="logo-sub">PMO Dashboard</div>
+            <div class="logo-sub">Admin Dashboard</div>
           </div>
         </a>
       </div>
@@ -114,8 +114,10 @@
             <span class="live-dot"></span> Live
           </div>
           <div class="topbar-user">
-            <span class="topbar-avatar">PMO</span>
-            <span>Admin</span>
+            <span class="topbar-role">Admin</span>
+            <!-- Filled by shared.js renderTopbarUser(). Left empty on purpose:
+                 a placeholder here would visibly change once JS runs. -->
+            <span class="topbar-name hide-mobile"></span>
           </div>
         </div>
       </header>

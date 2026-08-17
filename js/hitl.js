@@ -4,8 +4,8 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, getCategoryLabel, getCategoryIcon, getPriorityInfo, getUsers } from './mock-data.js';
+import { loadIssues, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { CATEGORIES, getCategoryLabel, getCategoryIcon, getPriorityInfo, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
 if (!(await checkAuth('admin'))) {
@@ -37,6 +37,8 @@ const statTodayEl = document.getElementById('stat-today');
 document.addEventListener('DOMContentLoaded', async () => {
   applyRBAC();
   initSidebarToggle();
+  initImageLightbox();
+  renderTopbarUser();
 
   // Manage Users link listener
   const manageUsersLink = document.getElementById('manage-users-link');
@@ -161,7 +163,7 @@ function renderCards() {
           <!-- Attached Photo -->
           <div class="hitl-card-section">
             <div class="section-label">Attached Photo</div>
-            <img src="${issue.imageUrl}" alt="Issue photo" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:pointer;" onclick="window.open(this.src,'_blank')">
+            <img src="${issue.imageUrl}" alt="Issue photo" data-lightbox title="Click to enlarge" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:zoom-in;">
           </div>
           ` : ''}
 
@@ -447,26 +449,6 @@ function updateBadge() {
 
 
 /* ---------- Mobile sidebar toggle ---------- */
-function initSidebarToggle() {
-  const toggle = document.getElementById('sidebar-toggle');
-  const sidebar = document.getElementById('sidebar');
-
-  if (toggle && sidebar) {
-    toggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
-
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', (e) => {
-      if (sidebar.classList.contains('open') &&
-        !sidebar.contains(e.target) &&
-        !toggle.contains(e.target)) {
-        sidebar.classList.remove('open');
-      }
-    });
-  }
-}
-
 function applyRBAC() {
   if (!currentUser) return;
 

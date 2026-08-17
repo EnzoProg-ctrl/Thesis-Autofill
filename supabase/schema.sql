@@ -17,7 +17,7 @@ CREATE TABLE profiles (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE  profiles IS 'PMO admin and maintenance staff accounts.';
+COMMENT ON TABLE  profiles IS 'Admin and maintenance staff accounts.';
 COMMENT ON COLUMN profiles.trade IS 'Staff specialty: Electrician, Plumber, HVAC, General, Security.';
 
 

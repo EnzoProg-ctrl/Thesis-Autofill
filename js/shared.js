@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { supabase } from './supabase-client.js';
-import { getUsers } from './mock-data.js';
+import { getUsers } from './app-data.js';
 
 /* ---------- Supabase Issue Operations (async) ---------- */
 
@@ -204,6 +204,70 @@ export function getLatestActivityTime(issue) {
 }
 
 
+/* ---------- Topbar ---------- */
+
+/**
+ * Fill in the signed-in user's name next to the static role pill.
+ *
+ * One implementation for every admin page. Each page used to carry its own
+ * copy, which is how hitl.html ended up with a name that was hardcoded in the
+ * markup and never updated at all.
+ *
+ * The name span is left EMPTY in the HTML rather than seeded with a
+ * placeholder. An empty slot filling in reads as the page finishing loading;
+ * a placeholder being swapped for a different value reads as the page
+ * changing its mind, which is what the old placeholder -> "SA" flip looked
+ * like.
+ */
+export function renderTopbarUser() {
+  const nameEl = document.querySelector('.topbar-name');
+  if (!nameEl) return;                    // page has no topbar user block
+  let user = null;
+  try { user = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
+  nameEl.textContent = user?.name || '';
+}
+
+
+/**
+ * Wire the mobile hamburger button to the sidebar.
+ *
+ * The close-on-outside-click handler MUST ignore clicks on the toggle itself.
+ * The button lives inside <main class="admin-content">, so a handler bound to
+ * that container receives the very click that opened the sidebar — it opened
+ * and then closed again within one click, and the panel never appeared. That
+ * was the bug on index.html and staff.html; hitl and analytics had the guard
+ * and worked.
+ *
+ * Clicks inside the sidebar are ignored too, so tapping a nav link or the logo
+ * does not dismiss the panel before the navigation happens.
+ *
+ * Accepts both id spellings in use: 'sidebar-toggle' on most pages,
+ * 'sidebarToggle' on analytics.html.
+ */
+export function initSidebarToggle() {
+  const toggle = document.getElementById('sidebar-toggle')
+              || document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('sidebar');
+  if (!toggle || !sidebar) return;
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sidebar.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!sidebar.classList.contains('open')) return;
+    if (sidebar.contains(e.target) || toggle.contains(e.target)) return;
+    sidebar.classList.remove('open');
+  });
+
+  // An open sidebar is a modal overlay on mobile; Escape should dismiss it.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') sidebar.classList.remove('open');
+  });
+}
+
+
 /* ---------- Toast Notification System ---------- */
 
 let toastContainer = null;
@@ -270,6 +334,63 @@ export function showModal(title, bodyHTML, footerHTML = '') {
 export function closeModal() {
   const overlay = document.querySelector('.modal-overlay');
   if (overlay) overlay.remove();
+}
+
+
+/* ---------- Image Lightbox ---------- */
+
+/**
+ * Open an attached photo in an overlay instead of a new tab.
+ *
+ * The previous behaviour was onclick="window.open(this.src,'_blank')", which
+ * never worked: photos are stored as data: URIs (tenant-app.js reads them with
+ * FileReader.readAsDataURL), and Chrome blocks top-level navigation to data:
+ * URLs outright — window.open returns null and nothing happens at all.
+ *
+ * Uses a delegated listener so it works for markup injected later by the
+ * slide-over and the HITL queue, which render their HTML as strings. Call
+ * initImageLightbox() once per page; any <img data-lightbox> is then clickable.
+ */
+export function initImageLightbox() {
+  if (document.body.dataset.lightboxReady) return;   // idempotent
+  document.body.dataset.lightboxReady = '1';
+
+  document.addEventListener('click', (e) => {
+    const img = e.target.closest('img[data-lightbox]');
+    if (!img) return;
+    e.preventDefault();
+    openLightbox(img.src, img.alt || 'Attached photo');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+}
+
+function openLightbox(src, alt) {
+  closeLightbox();
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay';
+  /* src is a data: URI or storage URL already rendered in an <img> on this
+     page; alt is escaped because it lands in an attribute. */
+  overlay.innerHTML = `
+    <button class="lightbox-close" aria-label="Close photo">&times;</button>
+    <img class="lightbox-img" alt="${escapeHtml(alt)}">
+  `;
+  overlay.querySelector('.lightbox-img').src = src;
+
+  // Click the backdrop or the close button to dismiss; clicking the photo
+  // itself must NOT close it, so people can inspect without losing the view.
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.closest('.lightbox-close')) closeLightbox();
+  });
+
+  document.body.appendChild(overlay);
+}
+
+function closeLightbox() {
+  const el = document.querySelector('.lightbox-overlay');
+  if (el) el.remove();
 }
 
 
@@ -369,7 +490,7 @@ export function openCreateUserModal() {
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label" for="newUserRole">Account Role <span style="color:var(--danger-500)">*</span></label>
         <select class="form-select" id="newUserRole">
-          <option value="admin">PMO Admin</option>
+          <option value="admin">Admin</option>
           <option value="staff" selected>Maintenance Staff</option>
         </select>
       </div>
@@ -586,11 +707,11 @@ export async function openEditAdminProfileModal() {
       closeModal();
       showToast('Profile updated successfully', 'success');
 
-      // Update topbar UI
-      const avatarEl = document.querySelector('.topbar-avatar');
-      const nameEl = document.querySelector('.topbar-user span:last-child');
-      if (avatarEl) avatarEl.textContent = updatedUser.avatar || name.substring(0, 2);
-      if (nameEl) nameEl.textContent = name;
+      // Refresh the topbar name from the session we just wrote. The role pill
+      // is static markup and is deliberately not touched. avatar_initials is
+      // still saved to the profile above — it is used elsewhere (staff lists),
+      // it just no longer drives the topbar.
+      renderTopbarUser();
 
     } catch (err) {
       console.error('Edit profile error:', err);

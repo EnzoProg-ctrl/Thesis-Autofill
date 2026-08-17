@@ -4,8 +4,8 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { CATEGORIES, STATUS_LIST, getCategoryLabel } from './mock-data.js';
-import { loadIssues, showToast, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { CATEGORIES, STATUS_LIST, getCategoryLabel } from './app-data.js';
+import { loadIssues, initSidebarToggle, showToast, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 
 /* ---------- Auth Guard ---------- */
 if (!(await checkAuth(['admin', 'staff']))) {
@@ -25,7 +25,6 @@ const CATEGORY_COLORS = {
   hvac: '#8b5cf6',
   structural: '#f59e0b',
   pest: '#ef4444',
-  elevator: '#10b981',
   fire_safety: '#f97316',
   housekeeping: '#6366f1',
   it_network: '#14b8a6',
@@ -38,7 +37,6 @@ const ESTIMATED_COST_PER_ISSUE = {
   hvac: 5000,
   structural: 8000,
   pest: 1500,
-  elevator: 6000,
   fire_safety: 4500,
   housekeeping: 800,
   it_network: 3000,
@@ -926,26 +924,6 @@ function initExportButtons() {
 
 /* ---------- Mobile Sidebar Toggle ---------- */
 
-function initSidebarToggle() {
-  const toggle = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-
-  toggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-  });
-
-  // Close sidebar when clicking outside on mobile
-  document.addEventListener('click', (e) => {
-    if (
-      sidebar.classList.contains('open') &&
-      !sidebar.contains(e.target) &&
-      !toggle.contains(e.target)
-    ) {
-      sidebar.classList.remove('open');
-    }
-  });
-}
-
 function applyRBAC() {
   let currentUser = null;
   try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
@@ -962,11 +940,9 @@ function applyRBAC() {
     if (analyticsLink) analyticsLink.classList.add('hidden');
   }
 
-  // Personalize topbar
-  const avatarEl = document.querySelector('.topbar-avatar');
-  const nameEl = document.querySelector('.topbar-user span:last-child');
-  if (avatarEl) avatarEl.textContent = currentUser.avatar || (currentUser.name ? currentUser.name.substring(0, 3) : 'USR');
-  if (nameEl) nameEl.textContent = currentUser.name || 'User';
+  // No topbar personalisation: analytics.html has no .topbar-user block, so
+  // this was already a no-op, and the other admin pages now show a static role
+  // pill instead of initials.
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
