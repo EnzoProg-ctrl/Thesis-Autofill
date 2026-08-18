@@ -337,7 +337,10 @@
     .auth-options {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      /* Left-aligned. With "Remember me" removed this row holds one link, and
+         a lone link pinned to the right edge reads as detached from the form
+         it belongs to — it lines up with the labels above it instead. */
+      justify-content: flex-start;
       margin-bottom: 24px;
     }
 
@@ -587,11 +590,12 @@
             </div>
           </div>
 
+          <!-- "Remember me" was removed on 2026-08-18. Nothing read the
+               checkbox, and Supabase persists the session regardless, so
+               ticking or clearing it changed nothing. A control that silently
+               ignores the user is worse than no control — someone on a shared
+               machine would clear it expecting to be signed out. -->
           <div class="auth-options">
-            <label>
-              <input type="checkbox" id="rememberMe">
-              Remember me
-            </label>
             <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
           </div>
 

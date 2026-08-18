@@ -15,16 +15,29 @@
 <body>
 
   <!-- ========== Header ========== -->
+  <!-- Header carries the logo only, matching home.html. The back link used to
+       live here as the second child of a space-between header, which pushed it
+       to the far right; putting it beside the logo instead just crowded two
+       links to the same destination together. It now sits above the page
+       title, where it reads as navigation for the content rather than part of
+       the brand. -->
   <header class="tenant-header">
     <a href="home.html" class="logo">
       <div class="logo-icon">N</div>
       <div class="logo-text">Nepo Mall <span>FIRS</span></div>
     </a>
-    <a href="home.html" class="back-link">← Back to Home</a>
   </header>
 
   <!-- ========== Main Content ========== -->
   <main class="tenant-main">
+    <a href="home.html" class="back-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 12H5"></path>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back to Home
+    </a>
     <h1 class="page-title">Report a Facility Issue</h1>
     <p class="page-subtitle">Describe your concern in English, Filipino, or Taglish — our AI system will process it
       automatically.</p>

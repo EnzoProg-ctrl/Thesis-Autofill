@@ -554,7 +554,7 @@ export function openCreateUserModal() {
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label" for="newUserPassword">Password <span style="color:var(--danger-500)">*</span></label>
         <div class="password-wrapper">
-          <input type="password" id="newUserPassword" class="form-input" placeholder="Min. 6 characters">
+          <input type="password" id="newUserPassword" class="form-input" placeholder="At least 8 characters">
           <button type="button" class="password-toggle" id="toggleNewUserPw" aria-label="Show password">
             ${EYE_OPEN_SVG}
           </button>
@@ -614,7 +614,7 @@ export function openCreateUserModal() {
     // Validation
     if (!name) { showToast('Please enter a name.', 'error'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email.', 'error'); return; }
-    if (!password || password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (!password || password.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return; }
 
     const saveBtn = overlay.querySelector('#createUserSave');
     saveBtn.disabled = true;
@@ -709,7 +709,7 @@ export async function openEditAdminProfileModal() {
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label" for="editProfilePassword">New Password</label>
         <div class="password-wrapper">
-          <input type="password" id="editProfilePassword" class="form-input" placeholder="Leave blank to keep current password">
+          <input type="password" id="editProfilePassword" class="form-input" placeholder="Leave blank to keep current password (min. 8)">
           <button type="button" class="password-toggle" id="toggleEditProfilePw" aria-label="Show password">
             ${EYE_OPEN_SVG}
           </button>
@@ -740,6 +740,16 @@ export async function openEditAdminProfileModal() {
 
     if (!name) {
       showToast('Please enter a name.', 'error');
+      return;
+    }
+
+    /* The password field is optional here — blank means "keep the current
+       one" — but when it IS filled it was previously written straight to
+       Supabase with no length check at all, so an admin could set a
+       one-character password on their own account. Only validated when
+       non-empty, so leaving it blank still works. */
+    if (newPassword && newPassword.length < 8) {
+      showToast('Password must be at least 8 characters.', 'error');
       return;
     }
 

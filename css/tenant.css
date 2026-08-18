@@ -43,14 +43,34 @@
   font-weight: 400;
   font-size: var(--text-sm);
 }
-.tenant-header .back-link {
-  font-size: var(--text-sm);
-  color: var(--gray-500);
-  display: flex;
+/* Back navigation sits at the top of the content, not in the header — see
+   tenant/index.html. inline-flex keeps the hit area to the text width rather
+   than the full column, so it does not read as a full-width bar. */
+.tenant-main .back-link {
+  display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--gray-500);
+  margin-bottom: var(--sp-5);
+  padding: var(--sp-2) 0;
+  transition: color var(--ease-fast), transform var(--ease-fast);
 }
-.tenant-header .back-link:hover { color: var(--primary-600); }
+
+.tenant-main .back-link:hover {
+  color: var(--primary-600);
+}
+
+/* Nudge the arrow, not the label, so the text stays put while the icon
+   signals direction. */
+.tenant-main .back-link:hover svg {
+  transform: translateX(-2px);
+}
+
+.tenant-main .back-link svg {
+  transition: transform var(--ease-fast);
+}
 
 
 /* ---------- Tenant Main ---------- */
