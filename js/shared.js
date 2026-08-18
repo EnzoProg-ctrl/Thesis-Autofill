@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { supabase } from './supabase-client.js';
-import { getUsers } from './app-data.js';
+import { getUsers, tradeOptionsHTML, getTradeInitials } from './app-data.js';
 
 /* ---------- Supabase Issue Operations (async) ---------- */
 
@@ -585,11 +585,7 @@ export function openCreateUserModal() {
       <div class="form-group" id="tradeGroup" style="margin-bottom:0">
         <label class="form-label" for="newUserTrade">Trade / Specialty</label>
         <select class="form-select" id="newUserTrade">
-          <option value="Electrician">Electrician</option>
-          <option value="Plumber">Plumber</option>
-          <option value="HVAC">HVAC</option>
-          <option value="General" selected>General</option>
-          <option value="Security">Security</option>
+          ${tradeOptionsHTML()}
         </select>
       </div>
     </div>
@@ -655,12 +651,10 @@ export function openCreateUserModal() {
         });
       }
 
-      // 4. Avatar based on trade/role
-      const tradeAvatars = {
-        'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
-        'General': 'GN', 'Security': 'SC'
-      };
-      const avatar = role === 'staff' ? (tradeAvatars[trade] || 'GN') : 'SA';
+      // 4. Avatar based on trade/role. Initials come from TRADES in
+      //    app-data.js — this used to be a second copy of the list and had
+      //    already drifted from the dropdown once.
+      const avatar = role === 'staff' ? getTradeInitials(trade) : 'SA';
 
       // 5. Insert into profiles table (via RPC to bypass RLS)
       const { error: profileError } = await supabase.rpc('admin_create_profile', {
@@ -706,11 +700,7 @@ export async function openEditAdminProfileModal() {
     <div class="form-group" style="margin-bottom:0">
       <label class="form-label" for="editProfileTrade">Trade / Specialty</label>
       <select class="form-select" id="editProfileTrade">
-        <option value="Electrician" ${currentUser.trade === 'Electrician' ? 'selected' : ''}>Electrician</option>
-        <option value="Plumber" ${currentUser.trade === 'Plumber' ? 'selected' : ''}>Plumber</option>
-        <option value="HVAC" ${currentUser.trade === 'HVAC' ? 'selected' : ''}>HVAC</option>
-        <option value="General" ${currentUser.trade === 'General' ? 'selected' : ''}>General</option>
-        <option value="Security" ${currentUser.trade === 'Security' ? 'selected' : ''}>Security</option>
+        ${tradeOptionsHTML(currentUser.trade)}
       </select>
     </div>
   ` : '';
@@ -773,11 +763,7 @@ export async function openEditAdminProfileModal() {
       const profileUpdates = { full_name: name };
       if (isStaff && trade) {
         profileUpdates.trade = trade;
-        const tradeAvatars = {
-          'Electrician': 'EL', 'Plumber': 'PL', 'HVAC': 'HV',
-          'General': 'GN', 'Security': 'SC'
-        };
-        profileUpdates.avatar_initials = tradeAvatars[trade] || 'GN';
+        profileUpdates.avatar_initials = getTradeInitials(trade);
       }
 
       const { error: profileError } = await supabase

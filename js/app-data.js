@@ -59,6 +59,51 @@ export function getPriorityRank(levelId) {
   return r === undefined ? -1 : r;
 }
 
+/* Maintenance staff specialties.
+   Single source of truth: the two dropdowns and the two avatar-initial maps in
+   shared.js all previously repeated this list, and the avatar map had already
+   drifted out of step with the dropdown once.
+
+   `covers` records which CATEGORIES a trade is the natural fit for. Nothing
+   uses it to route work today — assignment stays a human choice — but it
+   documents why each trade exists and makes the gap obvious if a category is
+   ever added without a matching specialist.
+
+   `initials` MUST be exactly two characters: profiles.avatar_initials carries
+   a CHECK (char_length = 2) constraint. */
+export const TRADES = [
+  { id: 'Electrician',  label: 'Electrician',       initials: 'EL', covers: ['electrical'] },
+  { id: 'Plumber',      label: 'Plumber',           initials: 'PL', covers: ['plumbing'] },
+  { id: 'HVAC',         label: 'HVAC',              initials: 'HV', covers: ['hvac'] },
+  { id: 'Carpenter',    label: 'Carpenter / Mason', initials: 'CP', covers: ['structural'] },
+  { id: 'Fire Safety',  label: 'Fire Safety',       initials: 'FS', covers: ['fire_safety'] },
+  { id: 'Housekeeping', label: 'Housekeeping',      initials: 'HK', covers: ['housekeeping'] },
+  { id: 'General',      label: 'General',           initials: 'GN', covers: ['other'] },
+];
+
+/* Security was removed on 2026-08-18. It was a leftover from the 8-class
+   taxonomy that dropped the Security CATEGORY on 2026-08-13 — no report can be
+   classified as security work, so no report could ever be routed to a security
+   specialist. Every trade above now maps to a live category. */
+
+export const DEFAULT_TRADE = 'General';
+
+/** Two-letter avatar initials for a trade. Falls back to General's. */
+export function getTradeInitials(tradeId) {
+  const t = TRADES.find(t => t.id === tradeId);
+  return t ? t.initials : 'GN';
+}
+
+/** <option> markup for a trade dropdown, marking `selected` as the chosen one.
+    Joined with no separator: whitespace between <option> tags is not
+    rendered, so there is nothing to gain from formatting it. */
+export function tradeOptionsHTML(selected) {
+  const chosen = selected || DEFAULT_TRADE;
+  return TRADES
+    .map(t => `<option value="${t.id}"${t.id === chosen ? ' selected' : ''}>${t.label}</option>`)
+    .join('');
+}
+
 export const STATUS_LIST = [
   { id: 'awaiting_review', label: 'Awaiting Review', color: '#f59e0b' },
   { id: 'in_progress', label: 'In Progress', color: '#0ea5e9' },

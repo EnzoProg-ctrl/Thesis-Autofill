@@ -18,7 +18,9 @@ CREATE TABLE profiles (
 );
 
 COMMENT ON TABLE  profiles IS 'Admin and maintenance staff accounts.';
-COMMENT ON COLUMN profiles.trade IS 'Staff specialty: Electrician, Plumber, HVAC, General, Security.';
+COMMENT ON COLUMN profiles.trade IS 'Staff specialty. Defined in js/app-data.js TRADES: '
+  'Electrician, Plumber, HVAC, Carpenter, Fire Safety, Housekeeping, General. '
+  'One per issue category. Plain TEXT, not constrained — the list is enforced by the UI.';
 
 
 -- =====================
