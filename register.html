@@ -250,7 +250,7 @@
       <div class="auth-logo">
         <div class="logo-icon">N</div>
         <div class="logo-title">Nepo Mall</div>
-        <div class="logo-subtitle">Register Your Store</div>
+        <div class="logo-subtitle" id="logoSubtitle">Register Your Store</div>
       </div>
 
       <div class="auth-error" id="authError">
@@ -260,7 +260,7 @@
 
       <div class="auth-success" id="authSuccess">
         <div class="success-title"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px;color:var(--success-600)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Registration Successful!</div>
-        <p>Your tenant account has been created. You can now sign in.</p>
+        <p id="successText">Your tenant account has been created. You can now sign in.</p>
         <a href="index.html" class="btn btn-primary" style="margin-top:var(--sp-4);display:inline-flex;">Go to Sign In</a>
       </div>
 
@@ -291,13 +291,13 @@
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="emailGroup">
           <label class="form-label" for="regEmail">Email Address <span class="required">*</span></label>
           <input type="email" id="regEmail" class="form-input" placeholder="store@example.com" autocomplete="email" required>
           <div class="form-hint">This will be used to sign in to the system.</div>
         </div>
 
-        <div class="form-row">
+        <div class="form-row" id="passwordRow">
           <div class="form-group">
             <label class="form-label" for="regPassword">Password <span class="required">*</span></label>
             <div class="password-wrapper">
@@ -367,6 +367,79 @@
     const passwordInput = document.getElementById('regPassword');
     const confirmInput = document.getElementById('regConfirm');
     const strengthFill = document.getElementById('passwordStrengthFill');
+    const emailInput = document.getElementById('regEmail');
+    const emailGroup = document.getElementById('emailGroup');
+    const passwordRow = document.getElementById('passwordRow');
+    const logoSubtitle = document.getElementById('logoSubtitle');
+    const successText = document.getElementById('successText');
+
+    /* ============================================================
+       FINISH-SETUP MODE
+
+       Registering is two operations that cannot share a transaction: an Auth
+       API call that creates the login, then an INSERT that creates the store
+       record. If the second fails the first is not undone, and the result is
+       an account that authenticates and has no identity in the app — it
+       cannot register again (the address is taken) and cannot sign in
+       (there is nothing to sign in AS). One such account sat stuck in the
+       live project for three weeks before anyone noticed.
+
+       Rather than delete the login and make the tenant start over, this page
+       finishes it. On load, a signed-in visitor with no tenants row and no
+       profiles row is shown the store fields alone; submitting runs only the
+       INSERT, against the session they already hold. index.html routes such a
+       sign-in here, so the recovery also works on a later visit and not only
+       in the tab where it broke.
+
+       The consent checkbox stays visible: privacy_consented_at lives on the
+       tenants row, so it was never recorded either.
+       ============================================================ */
+    let finishSetupUser = null;
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const uid = session.user.id;
+      const [tenantRes, profileRes] = await Promise.all([
+        supabase.from('tenants').select('id').eq('id', uid).maybeSingle(),
+        supabase.from('profiles').select('id').eq('id', uid).maybeSingle(),
+      ]);
+
+      /* maybeSingle() reports "no row" as data:null with NO error, so a
+         genuine failure looks identical to a missing account unless the error
+         is checked. Without this, one dropped request on mall wifi would tell
+         a tenant with a perfectly good account that their store details were
+         never saved. When we cannot tell, do nothing. */
+      if (tenantRes.error || profileRes.error) return;
+
+      // A complete account has no business on this page — leave the form as it
+      // is so a signed-in tenant who wanders here just sees normal registration.
+      if (tenantRes.data || profileRes.data) return;
+
+      /* An internal address cannot be self-registered as a tenant, and
+         finishing setup must not become the way around that rule. An orphaned
+         internal login is an administrative problem, not a tenant one. */
+      const addr = (session.user.email || '').toLowerCase();
+      if (addr.endsWith('@nepomall.com') || addr.endsWith('@nepomall-pmo.com')) {
+        showError('This account is not set up. Please contact administration.');
+        return;
+      }
+
+      enterFinishSetupMode(session.user);
+    })();
+
+    function enterFinishSetupMode(user, message) {
+      finishSetupUser = user;
+      emailGroup.style.display = 'none';
+      passwordRow.style.display = 'none';
+      emailInput.value = user.email || '';
+      logoSubtitle.textContent = 'Finish Setting Up Your Store';
+      registerBtn.textContent = 'Complete Registration';
+      showNotice(message
+        || 'Your login was created, but your store details were never saved. '
+         + 'Fill them in below to finish — you do not need to register again.');
+    }
 
     // Password strength indicator
     passwordInput.addEventListener('input', function() {
@@ -386,6 +459,13 @@
       else strengthFill.style.background = 'var(--success-500)';
     });
 
+    function resetButton() {
+      registerBtn.disabled = false;
+      registerBtn.textContent = finishSetupUser
+        ? 'Complete Registration'
+        : 'Create Tenant Account';
+    }
+
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
       authError.classList.remove('show');
@@ -394,20 +474,31 @@
       const floor = document.getElementById('storeFloor').value;
       const contact = document.getElementById('contactPerson').value.trim();
       const phone = document.getElementById('phoneNumber').value.trim();
-      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const email = emailInput.value.trim().toLowerCase();
       const password = passwordInput.value;
       const confirm = confirmInput.value;
 
-      // Validation
+      // Store details — required in both modes.
       if (!storeName) return showError('Please enter your store or business name.');
       if (!floor) return showError('Please select your store floor.');
       if (!contact) return showError('Please enter the contact person name.');
       if (!phone) return showError('Please enter a phone number.');
       if (!/^\d{11}$/.test(phone)) return showError('Phone number must be exactly 11 digits (e.g., 09171234567).');
-      if (!email) return showError('Please enter an email address.');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email address.');
-      if (password.length < 8) return showError('Password must be at least 8 characters.');
-      if (password !== confirm) return showError('Passwords do not match.');
+
+      /* Credentials — only when creating the login. In finish-setup mode it
+         already exists, the fields are hidden, and re-validating them would
+         block the submit on inputs the tenant cannot see. */
+      if (!finishSetupUser) {
+        if (!email) return showError('Please enter an email address.');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email address.');
+        if (password.length < 8) return showError('Password must be at least 8 characters.');
+        if (password !== confirm) return showError('Passwords do not match.');
+
+        // Internal (admin/staff) domains are not self-service.
+        if (email.endsWith('@nepomall.com') || email.endsWith('@nepomall-pmo.com')) {
+          return showError('Admin accounts cannot be registered here. Contact administration.');
+        }
+      }
 
       // Data Privacy consent validation
       const privacyCheckbox = document.getElementById('privacyConsent');
@@ -418,51 +509,108 @@
       }
       privacyBox.classList.remove('error');
 
-      // Check if email is an internal (admin/staff) domain
-      if (email.endsWith('@nepomall.com') || email.endsWith('@nepomall-pmo.com')) {
-        return showError('Admin accounts cannot be registered here. Contact administration.');
-      }
-
       registerBtn.disabled = true;
-      registerBtn.textContent = 'Creating account...';
+      registerBtn.textContent = finishSetupUser ? 'Saving...' : 'Creating account...';
 
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password
-      });
+      /* Captured BEFORE signUp. finishSetupUser answers "is the page in
+         finish-setup mode", and signUp below sets it so a failed INSERT can
+         retry — which would otherwise make a perfectly normal registration
+         report itself as a recovery on the success screen. These are two
+         different questions and need two variables. */
+      const wasFinishSetup = finishSetupUser !== null;
+      let recoveryUser = finishSetupUser;
 
-      if (error) {
-        registerBtn.disabled = false;
-        registerBtn.textContent = 'Create Tenant Account';
-        return showError(error.message);
-      }
+      let userId, userEmail;
 
-      if (data && data.user) {
-        const { error: insertError } = await supabase.from('tenants').insert({
-          id: data.user.id,
-          store_name: storeName,
-          floor: floor,
-          contact_person: contact,
-          phone_number: phone,
+      if (wasFinishSetup) {
+        userId = finishSetupUser.id;
+        // Normalised for the same reason the signUp path lowercases: tenants.email
+        // carries a UNIQUE constraint and must not depend on how it was typed.
+        userEmail = (finishSetupUser.email || '').trim().toLowerCase();
+      } else {
+        const { data, error } = await supabase.auth.signUp({
           email: email,
-          privacy_consented_at: new Date().toISOString()
+          password: password
         });
 
-        if (insertError) {
-          registerBtn.disabled = false;
-          registerBtn.textContent = 'Create Tenant Account';
-          return showError('Failed to create tenant profile: ' + insertError.message);
+        if (error) {
+          resetButton();
+          return showError(error.message);
+        }
+        if (!data || !data.user) {
+          resetButton();
+          return showError('Account creation did not complete. Please try again.');
         }
 
-        // Show success
-        form.style.display = 'none';
-        authSuccess.classList.add('show');
-        registerBtn.disabled = false;
-        registerBtn.textContent = 'Create Tenant Account';
+        userId = data.user.id;
+        userEmail = email;
+
+        /* signUp returns a live session while email confirmation is off, and
+           that session is what makes the recovery below possible: if the
+           INSERT fails we are already authenticated as the new user and the
+           same button can simply retry it. */
+        if (data.session) recoveryUser = data.user;
       }
+
+      const { error: insertError } = await supabase.from('tenants').insert({
+        id: userId,
+        store_name: storeName,
+        floor: floor,
+        contact_person: contact,
+        phone_number: phone,
+        email: userEmail,
+        privacy_consented_at: new Date().toISOString()
+      });
+
+      if (insertError) {
+        resetButton();
+
+        /* The login now exists and the store record does not. Do not leave the
+           tenant staring at a raw error with an address they can no longer
+           register: switch the page into finish-setup mode so the button
+           retries just the INSERT. With no session to retry against, tell them
+           how to come back instead. */
+        if (recoveryUser) {
+          enterFinishSetupMode(
+            recoveryUser,
+            'Your login was created, but saving your store details failed ('
+              + insertError.message + '). Press Complete Registration to try again.'
+          );
+        } else {
+          showError(
+            'Your login was created but your store details could not be saved ('
+              + insertError.message + '). Sign in with the same email and password '
+              + 'to finish setting up your store.'
+          );
+        }
+        return;
+      }
+
+      // Show success
+      form.style.display = 'none';
+      successText.textContent = wasFinishSetup
+        ? 'Your store details have been saved. You can now sign in.'
+        : 'Your tenant account has been created. You can now sign in.';
+      authError.classList.remove('show');
+      authSuccess.classList.add('show');
+      resetButton();
     });
 
     function showError(msg) {
+      authError.style.background = '';
+      authError.style.borderColor = '';
+      authError.style.color = '';
+      authErrorText.textContent = msg;
+      authError.classList.add('show');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* Same banner, neutral colours. "Finish setting up your store" is an
+       instruction, not a failure, and the red styling would read as one. */
+    function showNotice(msg) {
+      authError.style.background = 'var(--primary-50, #eff6ff)';
+      authError.style.borderColor = 'var(--primary-100, #dbeafe)';
+      authError.style.color = 'var(--primary-700, #1d4ed8)';
       authErrorText.textContent = msg;
       authError.classList.add('show');
       window.scrollTo({ top: 0, behavior: 'smooth' });

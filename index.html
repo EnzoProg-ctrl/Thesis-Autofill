@@ -730,10 +730,18 @@
           return;
         }
 
-        // If neither found
-        signInBtn.disabled = false;
-        signInBtn.textContent = 'Sign In';
-        showError('Account not configured');
+        /* The login exists but neither a profiles nor a tenants row does —
+           a signUp whose second step never completed. "Account not configured"
+           was a dead end: the address cannot be registered again and there is
+           nothing to sign in as, so the tenant had no way forward and no way
+           to tell us what happened.
+
+           register.html detects this session and shows the store fields on
+           their own, so send them there. The session is deliberately KEPT
+           signed in — it is what authorises the tenants insert that finishes
+           the account. */
+        window.location.href = 'register.html';
+        return;
       }
     });
 

@@ -316,7 +316,7 @@ reportForm.addEventListener('submit', async (e) => {
     <div class="processing-overlay">
       <div class="spinner spinner-lg"></div>
       <div class="processing-title">Analyzing your report...</div>
-      <div class="processing-text">Processing your description with BERT AI...</div>
+      <div class="processing-text">Processing your description with XLM-RoBERTa AI...</div>
     </div>
   `);
 
@@ -332,7 +332,7 @@ reportForm.addEventListener('submit', async (e) => {
 
     let tenantId = resolvedTenantId;
 
-    // Run BERT analysis (no selfAssessment parameter)
+    // Run XLM-RoBERTa analysis (no selfAssessment parameter)
     const aiResult = await analyzeText(
       descriptionText.value.trim(),
       categorySelect.value
