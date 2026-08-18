@@ -736,20 +736,59 @@
     forgotLink.addEventListener('click', async function (e) {
       e.preventDefault();
       const email = emailInput.value.trim();
-      if (email && isValidEmail(email)) {
-        authError.classList.remove('show');
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-        if (error) {
-          showError(error.message);
-        } else {
-          alert('A password reset link has been sent to ' + email + '.');
-        }
-      } else {
-        showError('Enter your email above, then click "Forgot password?"');
+
+      if (!email || !isValidEmail(email)) {
+        showError('Enter your email address above, then click "Forgot password?"');
+        emailInput.focus();
+        return;
       }
+
+      authError.classList.remove('show');
+      forgotLink.textContent = 'Sending...';
+      forgotLink.style.pointerEvents = 'none';
+
+      /* redirectTo is REQUIRED. Without it Supabase sends the user to the
+         project's Site URL, which during development pointed at localhost —
+         so the link in the email went nowhere for anyone but the developer.
+         window.location.origin keeps this correct on localhost, on Vercel
+         preview builds, and in production without further edits.
+
+         The destination must also be listed under
+         Authentication > URL Configuration > Redirect URLs in Supabase, or
+         the link is rejected. */
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password.html',
+      });
+
+      forgotLink.textContent = 'Forgot password?';
+      forgotLink.style.pointerEvents = '';
+
+      if (error) {
+        showError(error.message);
+        return;
+      }
+
+      /* Deliberately does not reveal whether the address is registered —
+         the same message shows either way, so this cannot be used to probe
+         which tenants have accounts. */
+      showInfo('If an account exists for ' + email + ', a reset link is on its way. Check your inbox and spam folder.');
     });
 
     function showError(msg) {
+      authError.style.background = '';
+      authError.style.borderColor = '';
+      authError.style.color = '';
+      authErrorText.textContent = msg;
+      authError.classList.add('show');
+    }
+
+    /* Same banner element, neutral colours. A "check your email" message shown
+       in the red error styling reads as a failure, which is exactly the wrong
+       signal after a successful request. */
+    function showInfo(msg) {
+      authError.style.background = 'var(--success-50)';
+      authError.style.borderColor = 'var(--success-100)';
+      authError.style.color = 'var(--success-700)';
       authErrorText.textContent = msg;
       authError.classList.add('show');
     }
