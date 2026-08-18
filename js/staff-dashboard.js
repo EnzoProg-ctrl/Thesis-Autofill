@@ -5,7 +5,7 @@
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
 import { loadIssues, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, showToast, showSlideOver, closeSlideOver, escapeHtml, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './app-data.js';
+import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getPriorityRank, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard — staff only ---------- */
 if (!(await checkAuth('staff'))) {
@@ -154,11 +154,15 @@ function renderKanban() {
     body.addEventListener('dragleave', handleDragLeave);
     body.addEventListener('drop', handleDrop);
 
-    // Same ordering as the admin board (admin-dashboard.js): severity first,
-    // then latest activity. Without the tiebreak, equal-priority cards fell
-    // back to whatever order loadIssues returned, so the two boards could
-    // still disagree on the ordering within a priority band.
+    // Same ordering as the admin board (admin-dashboard.js): priority level,
+    // then score, then latest activity. See that file for why the level has to
+    // lead — the card's dot renders the level, and the model's level and score
+    // can disagree, which made a Low card sort above Mediums.
     colIssues.sort((a, b) => {
+      // Level first, so the order agrees with the coloured dot on each card.
+      const lvlDiff = getPriorityRank(b.aiPriorityLevel) - getPriorityRank(a.aiPriorityLevel);
+      if (lvlDiff !== 0) return lvlDiff;
+      // Then the model's score, which separates cards inside one band.
       const priDiff = (b.aiPriority || 0) - (a.aiPriority || 0);
       return priDiff !== 0 ? priDiff : getLatestActivityTime(b) - getLatestActivityTime(a);
     });

@@ -44,6 +44,17 @@ COMMENT ON COLUMN tenants.phone_number IS 'PH mobile format — exactly 11 digit
 --  3. ISSUES
 --  (Main ticket / report table)
 -- =====================
+-- NOTE (2026-08-17): this table definition had drifted from the live
+-- database. The application (js/shared.js mapIssueFromDB / mapIssueToDB)
+-- reads and writes `text`, `category`, `store_name`, `contact_person` and
+-- `phone_number` on this table, but the file declared `description`,
+-- `user_category` and no contact columns at all — so a fresh project built
+-- from this file failed on every insert. The names below now match what the
+-- code actually uses.
+--
+-- STILL UNVERIFIED: `ticket_number` is NOT NULL UNIQUE and nothing in the
+-- JS ever sets it, so the live database must generate it (ISS-001 format).
+-- That mechanism is not captured here — see the note under the table.
 CREATE TABLE issues (
   -- Core identity
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -52,10 +63,17 @@ CREATE TABLE issues (
   -- Tenant relationship
   tenant_id       UUID        NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
 
+  -- Reporter contact, denormalised onto the report. Copied from the tenant
+  -- at submission time so a report keeps the details as they were given,
+  -- even if the store later updates its profile.
+  store_name      TEXT,
+  contact_person  TEXT,
+  phone_number    VARCHAR(11),
+
   -- Report content
-  description     TEXT        NOT NULL,
+  text            TEXT        NOT NULL,
   image_url       TEXT,
-  user_category   TEXT,
+  category        TEXT,
 
   -- Workflow
   status          TEXT        NOT NULL DEFAULT 'awaiting_review'
@@ -90,6 +108,31 @@ CREATE TABLE issues (
 
 COMMENT ON TABLE  issues IS 'Facility issue reports submitted by tenants.';
 COMMENT ON COLUMN issues.ticket_number IS 'Human-readable ID in ISS-001 format.';
+COMMENT ON COLUMN issues.image_url IS
+  'Currently holds a base64 data: URI, not a URL — see the warning below.';
+
+-- ⚠ ticket_number HAS NO DEFAULT HERE.
+--
+-- The application never sets it, yet the column is NOT NULL, so the live
+-- database must be generating it by a mechanism that is not in this file
+-- (a DEFAULT, a sequence, or a BEFORE INSERT trigger). Until that is
+-- exported from the live project, a database created from this file will
+-- reject every insert.
+--
+-- To capture it, run in the Supabase SQL editor and paste the result here:
+--
+--   SELECT column_default FROM information_schema.columns
+--    WHERE table_name = 'issues' AND column_name = 'ticket_number';
+--
+--   SELECT tgname, pg_get_triggerdef(oid) FROM pg_trigger
+--    WHERE tgrelid = 'public.issues'::regclass AND NOT tgisinternal;
+
+-- ⚠ image_url STORES BASE64, NOT A URL.
+--
+-- Photos are inlined as data: URIs. Reports are now fetched WITHOUT this
+-- column (js/shared.js ISSUE_LIST_COLUMNS) and the photo is loaded one at a
+-- time on demand, which removes the bandwidth problem — but the proper fix
+-- is Supabase Storage, with this column holding an actual object URL.
 COMMENT ON COLUMN issues.ai_confidence IS 'BERT model confidence percentage (0-100).';
 COMMENT ON COLUMN issues.ai_priority_score IS 'Computed priority score (0-100).';
 

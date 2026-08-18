@@ -40,6 +40,11 @@ const reportForm          = document.getElementById('reportForm');
 let resolvedTenantId = null;
 let selectedFile     = null;
 let selectedFileBase64 = null;
+/* Resolves when the picked photo has finished compressing. Submitting is fast
+   and compression is not instant, so the submit handler awaits this — without
+   it a quick tenant could submit before the resize finished and the photo
+   would be dropped silently. */
+let imageReady = Promise.resolve();
 
 
 /* ==========================================================
@@ -144,14 +149,55 @@ fileDropZone.addEventListener('drop', (e) => {
   e.preventDefault();
   fileDropZone.classList.remove('drag-over');
   const files = e.dataTransfer.files;
-  if (files.length > 0) handleFile(files[0]);
+  if (files.length > 0) imageReady = handleFile(files[0]);
 });
 
 fileInput.addEventListener('change', () => {
-  if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+  if (fileInput.files.length > 0) imageReady = handleFile(fileInput.files[0]);
 });
 
-function handleFile(file) {
+/* Photos are stored as base64 inside the issues table, and base64 is ~33%
+   larger than the file it encodes. A 10 MB phone photo therefore became ~13 MB
+   of database row, fetched again on every dashboard refresh.
+
+   Downscaling to fit within 1600px and re-encoding as JPEG at 0.75 quality
+   turns a typical phone photo into 200-400 KB with no meaningful loss of
+   detail for judging a leak or a cracked tile. The original file is never
+   uploaded — only this resized version is. */
+const MAX_IMAGE_DIMENSION = 1600;
+const IMAGE_QUALITY = 0.75;
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the image file.'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not decode the image.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+          const scale = MAX_IMAGE_DIMENSION / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        // White backdrop: transparent PNGs would otherwise go black as JPEG.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', IMAGE_QUALITY));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFile(file) {
   if (!file.type.startsWith('image/')) {
     showToast('Please upload an image file.', 'error');
     return;
@@ -162,19 +208,28 @@ function handleFile(file) {
   }
 
   selectedFile = file;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    selectedFileBase64 = e.target.result;
-    previewThumb.src = selectedFileBase64;
-  };
-  reader.readAsDataURL(file);
-
   previewName.textContent = file.name;
   previewSize.textContent = formatFileSize(file.size);
-
   fileDropZone.classList.add('hidden');
   filePreview.classList.remove('hidden');
+
+  try {
+    selectedFileBase64 = await compressImage(file);
+    previewThumb.src = selectedFileBase64;
+    // Show what will actually be stored, not what was picked — a 6 MB photo
+    // becoming 280 KB is worth the tenant seeing.
+    const storedBytes = Math.round((selectedFileBase64.length - 22) * 0.75);
+    previewSize.textContent = formatFileSize(storedBytes);
+  } catch (err) {
+    // Fall back to the original bytes rather than losing the photo entirely.
+    console.warn('[tenant] image compression failed, storing original:', err.message);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedFileBase64 = e.target.result;
+      previewThumb.src = selectedFileBase64;
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 fileRemove.addEventListener('click', () => {
@@ -271,6 +326,10 @@ reportForm.addEventListener('submit', async (e) => {
   overlay.onclick = null;
 
   try {
+    // Make sure a picked photo has finished compressing before we read
+    // selectedFileBase64 below, or a fast submit would silently drop it.
+    await imageReady;
+
     let tenantId = resolvedTenantId;
 
     // Run BERT analysis (no selfAssessment parameter)

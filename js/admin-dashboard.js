@@ -4,8 +4,8 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
-import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getUsers } from './app-data.js';
+import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getPriorityRank, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
 // Allow both admin and staff roles to access admin pages.
@@ -21,6 +21,7 @@ try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e)
 
 let issues = [];
 let staffMap = {};
+let issuesWithImages = new Set();   // ids that have a photo, without fetching any
 let currentView = 'kanban';          // 'kanban' | 'table'
 let sortColumn = 'submitted';
 let sortAsc = false;
@@ -49,6 +50,14 @@ async function initDashboard() {
     }
   } catch (err) {
     console.error('Staff load error:', err);
+  }
+
+  // Which reports have a photo — ids only, no photo data. Lets the detail
+  // panel show a photo section without the list query carrying every image.
+  try {
+    issuesWithImages = await loadIssueIdsWithImages();
+  } catch (err) {
+    console.error('Image index load error:', err);
   }
 
   applyRBAC();
@@ -252,17 +261,29 @@ function renderKanban() {
     body.addEventListener('dragleave', handleDragLeave);
     body.addEventListener('drop', handleDrop);
 
-    // Sort by AI priority (most severe first), tiebreak by latest activity.
+    // Order: priority LEVEL, then score, then latest activity.
     //
-    // These two keys used to be the other way round, which silently disabled
-    // the priority sort: getLatestActivityTime returns a millisecond epoch, so
-    // two reports practically never tie and the priority comparison was never
-    // reached. The board looked sorted, just by recency — a Critical filed an
-    // hour ago sat below a Low filed a minute ago.
+    // Two bugs were fixed here in turn. First the keys were reversed, which
+    // silently disabled the priority sort entirely — getLatestActivityTime
+    // returns a millisecond epoch, so two reports practically never tie and
+    // the priority comparison was never reached; the board was ordered purely
+    // by recency.
     //
-    // Severity leads here to match the staff board (staff-dashboard.js), so an
-    // admin and a technician looking at the same column see the same order.
+    // Then, sorting by score alone still looked wrong, because the card's dot
+    // renders the LEVEL and the two disagree: the model derives the level from
+    // the argmax and the score from a probability-weighted mean. A report
+    // called Low at 33% confidence (with 24% still on Critical) scored 54 and
+    // outranked real Mediums at 52 — a green dot sitting above blue ones.
+    // Ranking by level first makes the sequence match the colour a reviewer
+    // sees, while the score still separates cards inside a band.
+    //
+    // Kept identical to the staff board (staff-dashboard.js) so an admin and a
+    // technician looking at the same column see the same order.
     colIssues.sort((a, b) => {
+      // Level first, so the order agrees with the coloured dot on each card.
+      const lvlDiff = getPriorityRank(b.aiPriorityLevel) - getPriorityRank(a.aiPriorityLevel);
+      if (lvlDiff !== 0) return lvlDiff;
+      // Then the model's score, which separates cards inside one band.
       const priDiff = (b.aiPriority || 0) - (a.aiPriority || 0);
       return priDiff !== 0 ? priDiff : getLatestActivityTime(b) - getLatestActivityTime(a);
     });
@@ -539,11 +560,12 @@ function openIssueDetail(issueId) {
       <div class="hitl-original-text">${escapeHtml(issue.text)}</div>
     </div>
 
-    ${issue.imageUrl ? `
-    <!-- Attached Photo -->
-    <div style="margin-bottom: var(--sp-5);">
+    ${issuesWithImages.has(issue.id) ? `
+    <!-- Attached Photo. The image itself is NOT in the list query — it is
+         fetched here, for this one report, when the panel opens. -->
+    <div style="margin-bottom: var(--sp-5);" id="photo-slot-${issue.id}">
       <div class="text-xs font-semibold text-muted" style="text-transform:uppercase; letter-spacing:0.05em; margin-bottom: var(--sp-2);">Attached Photo</div>
-      <img src="${issue.imageUrl}" alt="Issue photo" data-lightbox title="Click to enlarge" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:zoom-in;">
+      <div class="text-sm text-muted">Loading photo…</div>
     </div>
     ` : ''}
 
@@ -564,7 +586,8 @@ function openIssueDetail(issueId) {
       </div>
 
       <div>
-        <div class="text-sm font-medium" style="margin-bottom: var(--sp-1);">Priority Score</div>
+        <div class="text-sm font-medium" style="margin-bottom: var(--sp-1);">Severity Index</div>
+        <div class="text-xs text-muted" style="margin-bottom: 4px;">Weighted across all four priority levels — a diagnostic, not the band. The badge below is the operational priority.</div>
         <div class="priority-gauge">
           <div class="priority-gauge-bar">
             <div class="priority-gauge-fill" style="width: ${issue.aiPriority}%; background: ${gaugeColor};"></div>
@@ -581,6 +604,19 @@ function openIssueDetail(issueId) {
   `;
 
   const panel = showSlideOver(`Issue Detail`, bodyHTML);
+
+  // Fetch the photo for this one report, now that the panel is open. Kept out
+  // of the list query so the dashboards do not transfer every photo on every
+  // 30s refresh — see ISSUE_LIST_COLUMNS in shared.js.
+  const photoSlot = panel.querySelector(`#photo-slot-${CSS.escape(issue.id)}`);
+  if (photoSlot) {
+    loadIssueImage(issue.id).then((src) => {
+      if (!photoSlot.isConnected) return;      // panel closed while loading
+      photoSlot.querySelector('.text-sm').outerHTML = src
+        ? `<img src="${src}" alt="Issue photo" data-lightbox title="Click to enlarge" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:zoom-in;">`
+        : `<div class="text-sm text-muted">Photo could not be loaded.</div>`;
+    });
+  }
 
   // Bind save
   const saveBtn = panel.querySelector('#detail-save');

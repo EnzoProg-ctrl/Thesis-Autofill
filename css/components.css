@@ -39,8 +39,14 @@
   color: #fff;
 }
 
+/* Anchors styled as buttons (<a class="btn btn-primary">) inherit the global
+   a:hover colour from design-system.css. That rule is `a:hover` (0,1,1) while
+   the variant is `.btn-primary` (0,1,0), so on hover the LABEL turned
+   primary-700 at the same moment the BACKGROUND turned primary-700 — the text
+   went invisible. Restating the colour on the hover rule (0,3,0) settles it. */
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-700);
+  color: #fff;
 }
 
 .btn-secondary {
@@ -52,6 +58,7 @@
 .btn-secondary:hover:not(:disabled) {
   background: var(--gray-50);
   border-color: var(--gray-400);
+  color: var(--gray-700);
 }
 
 .btn-success {
@@ -61,6 +68,7 @@
 
 .btn-success:hover:not(:disabled) {
   background: var(--success-700);
+  color: #fff;
 }
 
 .btn-danger {
@@ -70,6 +78,7 @@
 
 .btn-danger:hover:not(:disabled) {
   background: #b91c1c;
+  color: #fff;
 }
 
 .btn-ghost {
@@ -79,6 +88,7 @@
 
 .btn-ghost:hover:not(:disabled) {
   background: var(--gray-100);
+  color: var(--gray-600);
 }
 
 .btn-icon {

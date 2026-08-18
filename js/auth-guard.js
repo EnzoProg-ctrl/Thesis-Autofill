@@ -102,12 +102,20 @@ export async function checkAuth(requiredRole, loginUrl) {
   }
 
   // 3. Role check
+  //
+  // The roles passed in are the roles allowed — nothing is added implicitly.
+  // This used to push 'staff' into any list containing 'admin', which meant
+  // checkAuth('admin') silently also admitted staff and there was no way to
+  // express "admin only" at all. hitl.js asks for 'admin' because validating
+  // the AI's judgement is meant to be a separate pair of eyes from the
+  // technician doing the work; the old widening defeated that.
+  //
+  // Pages that genuinely allow both pass ['admin', 'staff'] explicitly
+  // (admin-dashboard.js, analytics.js already do).
   if (requiredRole) {
-    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    // For admin pages, allow both 'admin' and 'staff'
-    if (allowedRoles.includes('admin') && !allowedRoles.includes('staff')) {
-      allowedRoles.push('staff');
-    }
+    // Copy rather than use the caller's array — this function must not mutate
+    // an argument it was handed.
+    const allowedRoles = Array.isArray(requiredRole) ? [...requiredRole] : [requiredRole];
     if (!allowedRoles.includes(cachedUser.role)) {
       window.location.replace(loginUrl);
       return false;

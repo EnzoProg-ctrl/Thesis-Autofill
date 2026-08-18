@@ -4,7 +4,7 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, getCategoryLabel, getCategoryIcon, getPriorityInfo, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
@@ -19,6 +19,7 @@ try { currentUser = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e)
 /* ---------- State ---------- */
 let allIssues = [];
 let unvalidated = [];
+let issuesWithImages = new Set();   // ids that have a photo, without fetching any
 let currentCardIndex = 0;
 
 /* ---------- DOM refs ---------- */
@@ -78,11 +79,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ---------- Refresh all data ---------- */
 async function refresh() {
   allIssues = await loadIssues();
+  // ids only — tells the cards which reports have a photo to offer, without
+  // pulling any photo data into the queue.
+  try {
+    issuesWithImages = await loadIssueIdsWithImages();
+  } catch (err) {
+    console.error('Image index load error:', err);
+  }
   unvalidated = allIssues.filter(i => i.validated === false && i.status !== 'resolved');
   renderCards();
   updateStats();
   updateBadge();
 }
+
+/* One delegated handler for every "View photo" button in the queue. Fetches
+   that single report's photo, swaps the button for the image, and lets the
+   existing lightbox take over from there. */
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-load-photo]');
+  if (!btn) return;
+  const id = btn.dataset.loadPhoto;
+  const slot = document.querySelector(`[data-photo-slot="${CSS.escape(id)}"]`);
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+  const src = await loadIssueImage(id);
+  if (!slot) return;
+  if (src) {
+    slot.innerHTML = `<img src="${src}" alt="Issue photo" data-lightbox title="Click to enlarge" style="max-width:100%; margin-top:var(--sp-2); border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:zoom-in;">`;
+    btn.remove();
+  } else {
+    btn.textContent = 'Photo unavailable';
+  }
+});
 
 /* ---------- Render review cards ---------- */
 function renderCards() {
@@ -159,11 +187,16 @@ function renderCards() {
             <div class="hitl-original-text">${escapeHtml(issue.text)}</div>
           </div>
 
-          ${issue.imageUrl ? `
-          <!-- Attached Photo -->
+          ${issuesWithImages.has(issue.id) ? `
+          <!-- Attached Photo. This is a QUEUE, so the photos are loaded one at
+               a time on request rather than inlined into every card — the list
+               query no longer carries any image data at all. -->
           <div class="hitl-card-section">
             <div class="section-label">Attached Photo</div>
-            <img src="${issue.imageUrl}" alt="Issue photo" data-lightbox title="Click to enlarge" style="max-width:100%; border-radius:var(--radius-md); border:1px solid var(--gray-200); cursor:zoom-in;">
+            <button type="button" class="btn btn-secondary btn-sm" data-load-photo="${escapeHtml(issue.id)}">
+              View photo
+            </button>
+            <div class="photo-slot" data-photo-slot="${escapeHtml(issue.id)}"></div>
           </div>
           ` : ''}
 
@@ -180,7 +213,7 @@ function renderCards() {
                 <div class="text-xs text-muted mt-1">${confidence}% confidence</div>
               </div>
               <div class="ai-detail-item">
-                <div class="detail-label">AI Priority Score</div>
+                <div class="detail-label" title="Weighted across all four priority levels. Diagnostic only — the priority badge is the operational level.">AI Severity Index</div>
                 <div class="priority-gauge">
                   <div class="priority-gauge-bar">
                     <div class="priority-gauge-fill" style="width:${priorityScore}%; background:${aiPriInfo.color}"></div>
@@ -251,7 +284,7 @@ function generateReasoning(issue) {
     reasoning += `Lower confidence — the description may span multiple categories. Expert review recommended. `;
   }
 
-  reasoning += `Priority assessed as <strong>${priInfo.label}</strong> (score ${issue.aiPriority}/100)`;
+  reasoning += `Priority assessed as <strong>${priInfo.label}</strong> (severity index ${issue.aiPriority}/100)`;
 
   if (issue.selfAssessment === 'urgent') {
     reasoning += `, factoring in the tenant's self-assessed urgency.`;
@@ -325,8 +358,9 @@ async function handleOverride(issueId) {
   const notes = notesEl ? notesEl.value.trim() : '';
 
   const wasOverridden = (newCategory !== issue.aiCategory) || (newPriority !== issue.aiPriorityLevel);
+  const priorityChanged = newPriority !== issue.aiPriorityLevel;
 
-  await updateIssue(issueId, {
+  const patch = {
     validated: true,
     validatedBy: currentUser ? currentUser.id : 'Admin',
     validatedAt: new Date().toISOString(),
@@ -335,7 +369,24 @@ async function handleOverride(issueId) {
     // Update the actual category/priority if overridden
     category: newCategory,
     aiPriorityLevel: newPriority,
-  });
+  };
+
+  /* Keep the model's own priority before overwriting it.
+     Without this the reviewer's answer replaced the model's and there was no
+     way left to ask how often, or in which direction, reviewers disagree —
+     the one measurement a human-in-the-loop design exists to produce. The
+     deterministic safety floor already preserves its pre-override value in
+     ai_model_priority; this is the human equivalent.
+     Written only when the priority actually changed, and only if it has not
+     been recorded before, so re-validating a report cannot overwrite the
+     original model prediction with an earlier reviewer's correction.
+     ai_priority_score is untouched by overrides, so it still carries the
+     model's original score. */
+  if (priorityChanged && !issue.preOverridePriorityLevel) {
+    patch.preOverridePriorityLevel = issue.aiPriorityLevel;
+  }
+
+  await updateIssue(issueId, patch);
 
   animateCardOut(issueId, () => {
     if (wasOverridden) {

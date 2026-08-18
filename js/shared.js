@@ -7,17 +7,83 @@ import { getUsers } from './app-data.js';
 
 /* ---------- Supabase Issue Operations (async) ---------- */
 
+/* Every column the list views need — deliberately NOT image_url.
+ *
+ * Photos are stored as base64 data: URIs inside the issues table, so a
+ * select('*') pulled every photo ever uploaded on every call. The dashboards
+ * re-run this on a 30s timer, and none of the list views (kanban cards, table
+ * rows) actually display the photo — so that traffic bought nothing. With
+ * fifty 3 MB photos that was roughly 200 MB per refresh, per open tab.
+ *
+ * The photo is fetched one at a time, only when someone opens the report,
+ * via loadIssueImage(). See ISSUE_LIST_LIMIT below for the other half.
+ */
+const ISSUE_LIST_COLUMNS = [
+  'id', 'ticket_number', 'tenant_id', 'store_name', 'contact_person',
+  'phone_number', 'category', 'text', 'status', 'assigned_to',
+  'ai_category', 'ai_confidence', 'ai_priority_score', 'ai_priority_level',
+  'ai_language', 'validated', 'validated_by', 'validated_at',
+  'overridden', 'override_notes', 'pre_override_priority_level',
+  'submitted_at', 'updated_at',
+].join(',');
+
+/* Newest 500 reports. The dashboards render every row they are given into the
+ * DOM, so an unbounded query is a rendering problem as well as a transfer one.
+ * Raise it if the mall ever genuinely needs more on screen at once — but the
+ * right answer then is pagination, not a bigger number. */
+const ISSUE_LIST_LIMIT = 500;
+
 export async function loadIssues() {
   const { data, error } = await supabase
     .from('issues')
-    .select('*')
-    .order('submitted_at', { ascending: false });
+    .select(ISSUE_LIST_COLUMNS)
+    .order('submitted_at', { ascending: false })
+    .limit(ISSUE_LIST_LIMIT);
   if (error) {
     console.error('loadIssues error:', error);
     return [];
   }
   // Map DB column names → legacy JS property names for compatibility
   return data.map(mapIssueFromDB);
+}
+
+/**
+ * Fetch the photo for ONE issue, on demand.
+ *
+ * Returns the data: URI, or null when the report has no photo (or the read
+ * fails — callers just show nothing rather than breaking the page).
+ */
+export async function loadIssueImage(issueId) {
+  if (!issueId) return null;
+  const { data, error } = await supabase
+    .from('issues')
+    .select('image_url')
+    .eq('id', issueId)
+    .single();
+  if (error) {
+    console.error('loadIssueImage error:', error);
+    return null;
+  }
+  return data?.image_url || null;
+}
+
+/**
+ * Ids of reports that have a photo attached.
+ *
+ * Selecting only `id` keeps this tiny — it tells the list views which reports
+ * should offer a "view photo" affordance without transferring any photo data.
+ */
+export async function loadIssueIdsWithImages() {
+  const { data, error } = await supabase
+    .from('issues')
+    .select('id')
+    .not('image_url', 'is', null)
+    .limit(ISSUE_LIST_LIMIT);
+  if (error) {
+    console.error('loadIssueIdsWithImages error:', error);
+    return new Set();
+  }
+  return new Set(data.map(r => r.id));
 }
 
 export async function addIssue(issue) {
@@ -48,6 +114,10 @@ export async function updateIssue(issueId, updates) {
   if ('overrideNotes' in updates) dbUpdates.override_notes = updates.overrideNotes;
   if ('aiCategory' in updates) dbUpdates.ai_category = updates.aiCategory;
   if ('aiPriorityLevel' in updates) dbUpdates.ai_priority_level = updates.aiPriorityLevel;
+  // Written once, by the HITL override, to keep the model's own priority
+  // auditable after a reviewer changes it. See hitl.js handleOverride.
+  if ('preOverridePriorityLevel' in updates)
+    dbUpdates.pre_override_priority_level = updates.preOverridePriorityLevel;
 
   const { data, error } = await supabase
     .from('issues')
@@ -103,6 +173,9 @@ function mapIssueFromDB(row) {
     validatedAt: row.validated_at,
     overridden: row.overridden,
     overrideNotes: row.override_notes,
+    // The level as it stood before a human changed it in the HITL queue.
+    // NULL unless a reviewer actually altered the priority.
+    preOverridePriorityLevel: row.pre_override_priority_level,
     submittedAt: row.submitted_at,
     updatedAt: row.updated_at,
   };

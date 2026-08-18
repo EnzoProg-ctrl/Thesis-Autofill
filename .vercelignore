@@ -1,0 +1,21 @@
+# Files that must NOT be published on the public site.
+#
+# Vercel serves the repository root statically, so anything tracked here is
+# downloadable from the deployed URL unless it is listed below. None of these
+# are web assets — they are the inference service, the database definition, and
+# editor config.
+#
+# Publishing schema.sql and rls_policies.sql would hand an attacker a map of
+# exactly what is protected and how.
+
+serving/
+supabase/
+.vscode/
+.cursorrules
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

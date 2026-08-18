@@ -11,6 +11,18 @@
 serving/model/
 serving/*.zip
 
+# Credentials. NEVER commit these — this repo is deployed as a static site,
+# so anything tracked here is downloadable from the public URL.
+#
+# js/mcp_config.json held a Supabase personal access token (sbp_...) and was
+# committed in c206e71. It has been removed from the working tree, but it is
+# still in git history, so that token must be REVOKED, not just deleted:
+#   Supabase > Account > Access Tokens
+js/mcp_config.json
+**/mcp_config.json
+.env
+.env.*
+
 # Python
 __pycache__/
 *.pyc

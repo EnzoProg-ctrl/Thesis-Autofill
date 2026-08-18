@@ -36,6 +36,29 @@ export const PRIORITY_LEVELS = [
   { id: 'low', label: 'Low', color: '#22c55e', bg: '#f0fdf4' },
 ];
 
+/* Severity rank for ordering: higher number = more severe.
+   Derived from PRIORITY_LEVELS so the order can never drift from the list the
+   badges and filters use.
+
+   WHY THIS EXISTS: the kanban used to order cards by ai_priority_score, but the
+   coloured dot renders ai_priority_level, and the two are computed differently
+   by the model — the level is the argmax (single most likely class) while the
+   score is a probability-weighted mean across all four bands. A report the
+   model called Low at 33% confidence, with 24% still sitting on Critical,
+   scores 54 and so outranked genuine Mediums scoring 52. The board looked
+   wrong because a green dot sat above blue ones. Ordering by level first makes
+   the sequence agree with the colour a reviewer actually sees; the score is
+   kept as the tiebreaker inside each band, so the finer signal is not lost. */
+export const PRIORITY_RANK = Object.fromEntries(
+  PRIORITY_LEVELS.map((p, i) => [p.id, PRIORITY_LEVELS.length - 1 - i])
+);
+
+/** Severity rank for a level id. Unknown/missing levels sort last. */
+export function getPriorityRank(levelId) {
+  const r = PRIORITY_RANK[levelId];
+  return r === undefined ? -1 : r;
+}
+
 export const STATUS_LIST = [
   { id: 'awaiting_review', label: 'Awaiting Review', color: '#f59e0b' },
   { id: 'in_progress', label: 'In Progress', color: '#0ea5e9' },
