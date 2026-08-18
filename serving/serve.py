@@ -269,11 +269,24 @@ def apply_safety_floor(text: str, priority: dict | None) -> dict:
 
 app = FastAPI(title="FIRS Category Classifier", version="1.1")
 
-# The browser calls this directly from a file:// or localhost origin during
-# development. Tighten allow_origins to the deployed front-end before release.
+# Restricted to the deployed front end plus the local dev servers.
+#
+# This was allow_origins=["*"] during development. A public Space endpoint is
+# reachable by anyone, and while CORS does not stop a direct (non-browser)
+# request, it does stop another website from making a visitor's browser call
+# this service under that visitor's identity.
+#
+# Vercel preview deployments get their own subdomain per branch, so the regex
+# admits *.vercel.app; tighten it to the exact production host if previews are
+# not needed.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://thesis-autofill.vercel.app",   # production
+        "http://localhost:5500",                # Live Server
+        "http://127.0.0.1:5500",
+    ],
+    allow_origin_regex=r"https://thesis-autofill-.*\.vercel\.app",
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )

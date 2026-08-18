@@ -110,6 +110,26 @@ e.g., &quot;Yung aircon sa store namin parang hindi na gumagana, sobrang init na
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Where the classifier lives. MUST be set before tenant-app.js loads,
+       because js/bert-api.js reads it at module-evaluation time.
+
+       Without this the default is http://127.0.0.1:8000, which on a deployed
+       site means the VISITOR'S OWN device — nothing is listening there, so
+       every report silently falls back to the weaker keyword scorer and the
+       UI gives no indication. Check ai_priority_source in the database: it
+       should read 'model', never 'keyword'. -->
+  <script>window.FIRS_API_BASE = 'https://chompyy-firs-classifier.hf.space';</script>
+
+  <!-- Free Hugging Face Spaces sleep after 48h idle and take ~40s to wake,
+       but bert-api.js gives up after 8s. Firing a /health request as soon as
+       the page opens starts the wake-up while the tenant is still typing, so
+       the model is usually ready by the time they submit. Failure is ignored
+       on purpose: this is a warm-up, not a dependency. -->
+  <script>
+    fetch(window.FIRS_API_BASE + '/health', { mode: 'cors' }).catch(function () {});
+  </script>
+
   <script type="module" src="../js/tenant-app.js"></script>
 </body>
 

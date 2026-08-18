@@ -10,6 +10,7 @@
 
 serving/
 supabase/
+deploy/
 .vscode/
 .cursorrules
 .gitignore
