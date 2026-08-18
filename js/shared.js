@@ -24,7 +24,7 @@ const ISSUE_LIST_COLUMNS = [
   'ai_category', 'ai_confidence', 'ai_priority_score', 'ai_priority_level',
   'ai_language', 'validated', 'validated_by', 'validated_at',
   'overridden', 'override_notes', 'pre_override_priority_level',
-  'submitted_at', 'updated_at',
+  'text_edited_at', 'submitted_at', 'updated_at',
 ].join(',');
 
 /* Newest 500 reports. The dashboards render every row they are given into the
@@ -119,6 +119,18 @@ export async function updateIssue(issueId, updates) {
   if ('preOverridePriorityLevel' in updates)
     dbUpdates.pre_override_priority_level = updates.preOverridePriorityLevel;
 
+  /* The remaining AI fields were previously write-once, set at submission by
+     addIssue() and never updatable. That is why editing a report left the old
+     priority in place: the new text was saved, the classification was not.
+     The tenant edit flow re-runs the model and writes these back. */
+  if ('aiConfidence' in updates) dbUpdates.ai_confidence = updates.aiConfidence;
+  if ('aiPriority' in updates) dbUpdates.ai_priority_score = updates.aiPriority;
+  if ('aiLanguage' in updates) dbUpdates.ai_language = updates.aiLanguage;
+  if ('aiPrioritySource' in updates) dbUpdates.ai_priority_source = updates.aiPrioritySource;
+  if ('aiSafetyTerms' in updates) dbUpdates.ai_safety_terms = updates.aiSafetyTerms;
+  if ('aiModelPriority' in updates) dbUpdates.ai_model_priority = updates.aiModelPriority;
+  if ('textEditedAt' in updates) dbUpdates.text_edited_at = updates.textEditedAt;
+
   const { data, error } = await supabase
     .from('issues')
     .update(dbUpdates)
@@ -176,6 +188,9 @@ function mapIssueFromDB(row) {
     // The level as it stood before a human changed it in the HITL queue.
     // NULL unless a reviewer actually altered the priority.
     preOverridePriorityLevel: row.pre_override_priority_level,
+    // Set only when the tenant edits the description — NOT bumped by
+    // status changes or validation, unlike updatedAt.
+    textEditedAt: row.text_edited_at,
     submittedAt: row.submitted_at,
     updatedAt: row.updated_at,
   };

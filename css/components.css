@@ -870,18 +870,35 @@
   margin-bottom: var(--sp-2);
 }
 
+/* Wraps. This row can carry four items — tenant, category, an "Edited" badge
+   and the timestamp — and a 280px column cannot fit them on one line, so
+   without flex-wrap the last one overflowed the card border. The two-value gap
+   keeps the vertical gap tighter than the horizontal, so a wrapped row still
+   reads as a single block. */
 .kanban-card-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2) var(--sp-3);
   font-size: var(--text-xs);
   color: var(--gray-500);
+  min-width: 0;
 }
 
 .kanban-card-meta span {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+/* Store names are free text and can be long. Truncate rather than let one
+   tenant's name push everything else onto a second line. */
+.kanban-card-meta > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 

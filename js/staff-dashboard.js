@@ -200,6 +200,7 @@ function createKanbanCard(issue) {
     <div class="kanban-card-meta">
       <span>${tenantDisplay}</span>
       <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span>
+      ${issue.textEditedAt ? `<span class="badge badge-warning" title="The tenant changed the description after submitting. Priority was re-checked against the new text.">Edited</span>` : ''}
       <span>${formatRelativeTime(issue.submittedAt)}</span>
     </div>
     ${isAssignedToMe ? `<div style="margin-top:var(--sp-1);"><span style="font-size:10px; background:var(--primary-50); color:var(--primary-700); padding:2px 8px; border-radius:100px; font-weight:600;">✓ Assigned to me</span></div>` : ''}

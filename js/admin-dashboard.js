@@ -320,6 +320,7 @@ function createKanbanCard(issue) {
     <div class="kanban-card-meta">
       <span>${tenantDisplay}</span>
       <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span>
+      ${issue.textEditedAt ? `<span class="badge badge-warning" title="The tenant changed the description after submitting. Priority was re-checked against the new text.">Edited</span>` : ''}
       <span>${formatActivityTime(issue)}</span>
     </div>
   `;
@@ -557,6 +558,10 @@ function openIssueDetail(issueId) {
     <!-- Original Text -->
     <div style="margin-bottom: var(--sp-5);">
       <div class="text-xs font-semibold text-muted" style="text-transform:uppercase; letter-spacing:0.05em; margin-bottom: var(--sp-2);">Original Text</div>
+      ${issue.textEditedAt ? `
+      <div class="badge badge-warning" style="margin-bottom:var(--sp-2);">
+        Edited by tenant ${formatRelativeTime(issue.textEditedAt)} — priority re-checked
+      </div>` : ''}
       <div class="hitl-original-text">${escapeHtml(issue.text)}</div>
     </div>
 

@@ -184,6 +184,10 @@ function renderCards() {
           <!-- Original Text -->
           <div class="hitl-card-section">
             <div class="section-label">Original Report (${escapeHtml(issue.aiLanguage || 'Taglish')})</div>
+            ${issue.textEditedAt ? `
+            <div class="badge badge-warning" style="margin-bottom:var(--sp-2);">
+              Edited by tenant ${formatRelativeTime(issue.textEditedAt)} — re-classified, needs review again
+            </div>` : ''}
             <div class="hitl-original-text">${escapeHtml(issue.text)}</div>
           </div>
 

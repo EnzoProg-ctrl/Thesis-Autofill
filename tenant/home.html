@@ -548,10 +548,17 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Needed here as well as on the report form: editing a report re-runs the
+       classifier, so this page calls the model too. Must be set before the
+       module loads — bert-api.js reads it at module-evaluation time. -->
+  <script>window.FIRS_API_BASE = 'https://chompyy-firs-classifier.hf.space';</script>
+
   <script type="module">
     import { checkAuth } from '../js/auth-guard.js';
     import { CATEGORIES, STATUS_LIST, getCategoryLabel } from '../js/app-data.js';
     import { loadIssues, updateIssue, deleteIssue, formatDate, formatRelativeTime, showToast } from '../js/shared.js';
+    import { analyzeText } from '../js/bert-api.js';
     import { supabase } from '../js/supabase-client.js';
 
     (async () => {
@@ -786,6 +793,11 @@
     const editCategorySelect = document.getElementById('editCategory');
     const editDescriptionArea = document.getElementById('editDescription');
     let editingIssueId = null;
+    /* The description as it stood when the modal opened. saveReport compares
+       against this to decide whether to re-run the classifier — reclassifying
+       on every save would call the model even when only the category dropdown
+       changed. */
+    let editingOriginalText = '';
 
     // Populate category dropdown once
     CATEGORIES.forEach(cat => {
@@ -801,6 +813,7 @@
       if (!issue) return;
 
       editingIssueId = issueId;
+      editingOriginalText = issue.text || '';
       editIssueIdInput.value = issue.ticketNumber || issue.id;
       editCategorySelect.value = issue.category || issue.aiCategory || '';
       editDescriptionArea.value = issue.text || '';
@@ -810,6 +823,7 @@
     function closeReportModal() {
       reportOverlay.style.display = 'none';
       editingIssueId = null;
+      editingOriginalText = '';
     }
 
     async function saveReport() {
@@ -821,14 +835,65 @@
       if (!newCategory) { showToast('Please select a category.', 'error'); return; }
       if (newText.length < 10) { showToast('Description must be at least 10 characters.', 'error'); return; }
 
-      await updateIssue(editingIssueId, {
+      const textChanged = newText !== editingOriginalText;
+
+      const patch = {
         category: newCategory,
         text: newText,
         updatedAt: new Date().toISOString(),
-      });
+      };
+
+      const saveBtn = document.getElementById('reportSaveBtn');
+
+      /* Re-classify whenever the DESCRIPTION changes.
+         Previously the new text was saved and the old classification kept, so
+         a report first written as an emergency stayed Critical even after the
+         tenant rewrote it as something routine — the priority described text
+         that no longer existed.
+         Category-only edits are skipped: the model reads the description, so
+         changing the dropdown cannot change what it would predict. */
+      if (textChanged) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Re-checking...';
+        try {
+          const ai = await analyzeText(newText, newCategory);
+          patch.aiCategory = ai.category;
+          patch.aiConfidence = ai.confidence;
+          patch.aiPriority = ai.priorityScore;
+          patch.aiPriorityLevel = ai.priorityLevel;
+          patch.aiLanguage = ai.language;
+          patch.aiPrioritySource = ai.prioritySource || null;
+          patch.aiSafetyTerms = ai.safetyOverride?.matchedTerms?.length
+            ? ai.safetyOverride.matchedTerms.join(',')
+            : null;
+          patch.aiModelPriority = ai.safetyOverride?.applied
+            ? ai.safetyOverride.modelPriorityLevel
+            : null;
+        } catch (err) {
+          /* Keep the edit rather than losing the tenant's work. The stale
+             priority stays, which is why the admin badge below matters — a
+             reviewer can see the text moved and re-judge it. */
+          console.error('Re-classification failed:', err);
+        }
+
+        patch.textEditedAt = new Date().toISOString();
+
+        /* A prior validation was made against text that no longer exists, so
+           it no longer means anything — send the report back to the review
+           queue. Without this an admin's sign-off would silently carry over to
+           wording they never read. */
+        patch.validated = false;
+
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
+      }
+
+      await updateIssue(editingIssueId, patch);
 
       closeReportModal();
-      showToast('Report updated successfully!', 'success');
+      showToast(textChanged
+        ? 'Report updated — priority re-checked.'
+        : 'Report updated successfully!', 'success');
       await refreshDashboard();
     }
 
