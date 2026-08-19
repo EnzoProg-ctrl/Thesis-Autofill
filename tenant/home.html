@@ -554,6 +554,16 @@
        module loads — bert-api.js reads it at module-evaluation time. -->
   <script>window.FIRS_API_BASE = 'https://chompyy-firs-classifier.hf.space';</script>
 
+  <!-- Same warm-up as tenant/index.html, and for the same reason: editing a
+       description re-runs the classifier, so this page can hit a cold Space
+       too. It was missing here, which left the edit path — the one that
+       reaches the model on a page nobody thinks of as an AI page — with no
+       head start at all. Failure is ignored on purpose: a warm-up, not a
+       dependency. -->
+  <script>
+    fetch(window.FIRS_API_BASE + '/health', { mode: 'cors' }).catch(function () {});
+  </script>
+
   <script type="module">
     import { checkAuth } from '../js/auth-guard.js';
     import { CATEGORIES, STATUS_LIST, getCategoryLabel } from '../js/app-data.js';

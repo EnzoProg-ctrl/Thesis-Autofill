@@ -129,6 +129,16 @@ COMMENT ON FUNCTION public.guard_tenant_issue_update() IS
   'Blocks HITL bypass: issues_update_tenant_own is row-level and would '
   'otherwise let a tenant set validated, status or assigned_to on their own report.';
 
+-- Same treatment functions_and_triggers.sql gives the other two trigger
+-- functions. Revoking EXECUTE does NOT stop the trigger firing — triggers run
+-- in the table owner's context, not the caller's — it only removes the
+-- function from the REST surface. Postgres would refuse a direct call anyway
+-- ("trigger functions can only be called as triggers"), so this is hygiene
+-- rather than a hole being closed; without it the Supabase security advisor
+-- reports the function as callable by anon and authenticated.
+REVOKE ALL ON FUNCTION public.guard_tenant_issue_update()
+  FROM PUBLIC, anon, authenticated;
+
 -- ============================================================
 --  VERIFY (run in the browser console, signed in as a TENANT, on
 --  tenant/home.html, against one of your own awaiting_review reports)

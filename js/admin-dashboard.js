@@ -4,7 +4,7 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, priorityProvenanceNote, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getPriorityRank, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
@@ -319,7 +319,7 @@ function createKanbanCard(issue) {
     <div class="kanban-card-title">${escapeHtml(issue.text)}</div>
     <div class="kanban-card-meta">
       <span>${tenantDisplay}</span>
-      <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span>
+      <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span>
       ${issue.textEditedAt ? `<span class="badge badge-warning" title="The tenant changed the description after submitting. Priority was re-checked against the new text.">Edited</span>` : ''}
       <span>${formatActivityTime(issue)}</span>
     </div>
@@ -464,7 +464,7 @@ function renderTable() {
     tr.innerHTML = `
       <td><span class="font-semibold">${escapeHtml(issue.ticketNumber || issue.id)}</span></td>
       <td>${tenantDisplay}</td>
-      <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span></td>
+      <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span></td>
       <td>
         <div class="flex items-center gap-2">
           <span class="priority-dot ${issue.aiPriorityLevel}"></span>
@@ -583,7 +583,7 @@ function openIssueDetail(issueId) {
       </div>
 
       <div style="margin-bottom: var(--sp-3);">
-        <div class="text-sm font-medium" style="margin-bottom: var(--sp-1);">Category: <span class="badge badge-primary">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span></div>
+        <div class="text-sm font-medium" style="margin-bottom: var(--sp-1);">Category: <span class="badge badge-primary">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span></div>
         <div class="text-xs text-muted" style="margin-bottom: 4px;">Confidence: ${issue.aiConfidence}%</div>
         <div class="confidence-bar">
           <div class="confidence-bar-fill ${confLevel}" style="width: ${issue.aiConfidence}%;"></div>
@@ -602,6 +602,24 @@ function openIssueDetail(issueId) {
         <div class="flex items-center gap-2 mt-1">
           <span class="priority-badge ${issue.aiPriorityLevel}"><span class="priority-dot ${issue.aiPriorityLevel}"></span> ${priorityInfo.label}</span>
         </div>
+
+        ${(() => {
+      /* Who actually set this priority. Silent on the ordinary case — the
+         badge above already says it — and speaks up for the two that the
+         badge cannot distinguish: a report floored to High on a danger word
+         when the model said Low, and a report the model never saw because
+         the inference service was down. Both used to look identical to a
+         confident model prediction. Shared with the HITL card so the two
+         screens cannot drift apart. */
+      const note = priorityProvenanceNote(issue);
+      if (!note) return '';
+      const flagged = issue.aiPrioritySource === 'safety_floor'
+        || issue.aiPrioritySource === 'keyword';
+      return `<div class="text-xs mt-2" style="padding:var(--sp-2) var(--sp-3); border-radius:var(--radius-md); line-height:1.5;
+                  background:${flagged ? 'var(--warning-50, #fffbeb)' : 'var(--gray-50)'};
+                  border:1px solid ${flagged ? 'var(--warning-200, #fde68a)' : 'var(--gray-200)'};
+                  color:var(--gray-700);">${note}</div>`;
+    })()}
       </div>
     </div>
 

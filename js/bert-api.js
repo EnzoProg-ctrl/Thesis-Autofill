@@ -26,8 +26,25 @@ const API_BASE = (typeof window !== 'undefined' && window.FIRS_API_BASE)
 
 /* A tenant reporting a burst pipe must never be blocked by a model service.
    If inference has not answered in this long, give up and use the keyword
-   classifier. */
-const TIMEOUT_MS = 8000;
+   classifier.
+
+   Raised from 8s to 15s on 2026-08-19. A measured COLD request against the
+   deployed Space took 7694 ms — 306 ms inside the old limit. Warm requests
+   settle at ~1 s (five consecutive: 1.03, 1.06, 1.08, 1.05, 1.05), so this
+   ceiling is only ever reached by the first report after an idle period,
+   which is exactly the request that must not be dropped: 51 tenants hitting
+   a Space that idles between bursts means someone gets the cold one.
+
+   The trade is asymmetric. Waiting another few seconds costs a tenant who is
+   already watching a spinner very little. Timing out costs a silent downgrade
+   to the keyword scorer, which is markedly worse on Taglish and announces
+   nothing — the report just gets a worse answer and looks identical on
+   screen. Better late and right than prompt and wrong.
+
+   All 26 reports in the database to date read ai_priority_source = 'model',
+   so this has never actually fired in production. That is a margin worth
+   keeping, not evidence the limit was generous. */
+const TIMEOUT_MS = 15000;
 
 /* Category ids the model can emit. As of 2026-08-17 this matches the app's
    CATEGORIES list exactly (app-data.js) — the 'elevator' category, which the

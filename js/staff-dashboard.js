@@ -199,7 +199,7 @@ function createKanbanCard(issue) {
     <div class="kanban-card-title">${escapeHtml(issue.text || '')}</div>
     <div class="kanban-card-meta">
       <span>${tenantDisplay}</span>
-      <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span>
+      <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span>
       ${issue.textEditedAt ? `<span class="badge badge-warning" title="The tenant changed the description after submitting. Priority was re-checked against the new text.">Edited</span>` : ''}
       <span>${formatRelativeTime(issue.submittedAt)}</span>
     </div>
@@ -338,7 +338,7 @@ function renderTable() {
     tr.innerHTML = `
       <td><span class="font-semibold">${escapeHtml(issue.ticketNumber || issue.id)}</span></td>
       <td>${tenantDisplay}</td>
-      <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${getCategoryLabel(issue.aiCategory)}</span></td>
+      <td><span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span></td>
       <td>
         <div class="flex items-center gap-2">
           <span class="priority-dot ${issue.aiPriorityLevel}"></span>

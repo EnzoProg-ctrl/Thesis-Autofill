@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { supabase } from './supabase-client.js';
-import { getUsers, tradeOptionsHTML, getTradeInitials } from './app-data.js';
+import { getUsers, tradeOptionsHTML, getTradeInitials, getPriorityInfo } from './app-data.js';
 
 /* ---------- Supabase Issue Operations (async) ---------- */
 
@@ -25,6 +25,12 @@ const ISSUE_LIST_COLUMNS = [
   'ai_language', 'validated', 'validated_by', 'validated_at',
   'overridden', 'override_notes', 'pre_override_priority_level',
   'text_edited_at', 'submitted_at', 'updated_at',
+  /* Priority provenance. Written on every submission since
+     migration_002_ai_provenance, and until now fetched by nothing — so the
+     HITL queue could not tell a reviewer that a report had been floored by a
+     keyword rule rather than judged by the model, or that the model never ran
+     at all. See generateReasoning() in hitl.js. */
+  'ai_priority_source', 'ai_safety_terms', 'ai_model_priority',
 ].join(',');
 
 /* Newest 500 reports. The dashboards render every row they are given into the
@@ -188,6 +194,17 @@ function mapIssueFromDB(row) {
     // The level as it stood before a human changed it in the HITL queue.
     // NULL unless a reviewer actually altered the priority.
     preOverridePriorityLevel: row.pre_override_priority_level,
+    /* How the priority was actually reached:
+         'model'        the model's own priority head
+         'keyword'      the inference service was unreachable and the weak
+                        fallback scorer triaged this report
+         'safety_floor' a danger term overrode a lower model prediction
+       aiSafetyTerms is populated whenever danger terms are present, even when
+       the model had already reached High unaided; aiModelPriority holds what
+       the model said, but only when the floor actually overrode it. */
+    aiPrioritySource: row.ai_priority_source,
+    aiSafetyTerms: row.ai_safety_terms,
+    aiModelPriority: row.ai_model_priority,
     // Set only when the tenant edits the description — NOT bumped by
     // status changes or validation, unlike updatedAt.
     textEditedAt: row.text_edited_at,
@@ -521,6 +538,78 @@ export function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+
+/* ---------- Priority provenance ----------
+
+   Says who actually decided the priority on a report, in prose.
+
+   ai_priority_source, ai_safety_terms and ai_model_priority have been written
+   on every submission since migration_002_ai_provenance and were displayed
+   nowhere at all, which left the two cases that most need a second opinion
+   looking exactly like an ordinary model prediction:
+
+     * the safety floor raised the priority on a danger word, and the model
+       itself had said something lower
+     * the inference service was unreachable, so the keyword fallback triaged
+       the report and the model never ran
+
+   Lives here rather than in hitl.js because the HITL queue and the admin
+   detail panel both need it, and every other thing this codebase wrote out
+   twice has since drifted apart.
+
+   Returns an HTML string, or '' when there is nothing worth saying. */
+export function priorityProvenanceNote(issue) {
+  const priInfo = getPriorityInfo(issue.aiPriorityLevel);
+  const score = issue.aiPriority;
+
+  if (issue.aiPrioritySource === 'safety_floor') {
+    const modelSaid = issue.aiModelPriority
+      ? getPriorityInfo(issue.aiModelPriority).label
+      : null;
+    return `Priority <strong>${priInfo.label}</strong> (severity index ${score}/100) was set by the `
+      + `<strong>safety floor</strong>, not by the model`
+      + (modelSaid ? ` — the model scored this ${modelSaid}` : '')
+      /* "forcing" rather than "which force(s)": formatSafetyTerms returns
+         either a singular or a plural phrase, and a finite verb would have to
+         agree with whichever it produced. A participle sidesteps the
+         agreement entirely and reads the same either way. */
+      + `. The report contains ${formatSafetyTerms(issue.aiSafetyTerms)}, forcing a minimum `
+      + `of High. The floor does not read negation, so "walang usok" trips it too.`;
+  }
+
+  if (issue.aiPrioritySource === 'keyword') {
+    return `<strong>The model did not run on this report.</strong> The inference service was `
+      + `unreachable, so the priority of <strong>${priInfo.label}</strong> (severity index `
+      + `${score}/100) came from the keyword fallback, which is markedly weaker on Taglish. `
+      + `Treat it as unscored.`;
+  }
+
+  /* Danger terms present, but the model reached High on its own. Worth saying:
+     a reviewer who spots the words and sees no note may assume the floor acted
+     when it did not. */
+  if (issue.aiSafetyTerms) {
+    return `Contains ${formatSafetyTerms(issue.aiSafetyTerms)} — the model had already reached `
+      + `the High floor unaided, so the safety floor changed nothing here.`;
+  }
+
+  return '';
+}
+
+
+/** Danger terms as a readable, quoted, escaped list. ai_safety_terms is a
+    free-text column that a tenant's own session can write, so it is never
+    interpolated raw. */
+export function formatSafetyTerms(terms) {
+  const list = String(terms || '')
+    .split(',')
+    .map(t => t.trim())
+    .filter(Boolean)
+    .map(t => `"${escapeHtml(t)}"`);
+  if (list.length === 0) return 'a safety keyword';
+  if (list.length === 1) return `the safety keyword ${list[0]}`;
+  return `the safety keywords ${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 }
 
 

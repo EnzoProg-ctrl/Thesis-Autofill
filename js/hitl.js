@@ -4,7 +4,7 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, priorityProvenanceNote, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, getCategoryLabel, getCategoryIcon, getPriorityInfo, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
@@ -272,31 +272,85 @@ function renderCards() {
 }
 
 
-/* ---------- AI Reasoning generator ---------- */
+/* ---------- AI Reasoning generator ----------
+
+   What the reviewer is told about how this report was triaged.
+
+   The previous version of this function described a keyword matcher — "strong
+   keyword signals in the report text", "primary category keywords detected" —
+   for a classifier that is an XLM-RoBERTa transformer and reads no keyword
+   lists at all. It also invented its confidence narrative rather than reading
+   anything, and branched on issue.selfAssessment, a field the tenant form
+   stopped sending. Every sentence it produced was decoration.
+
+   This version states only what is recorded on the row, and says the things a
+   reviewer needs in order to distrust the answer in front of them:
+
+     * the priority may not be the MODEL'S priority. The deterministic safety
+       floor can raise Low to High on a danger word alone, and a reviewer
+       looking at "High" cannot otherwise tell that the model said Low.
+     * the model may not have run AT ALL. When the inference service is
+       unreachable the keyword fallback triages the report, and that path is
+       markedly worse on Taglish. It looks identical on screen.
+     * a human may have been here already, on a re-validation.
+
+   All three were being written to the database on every submission and shown
+   to nobody. */
 function generateReasoning(issue) {
-  const catLabel = getCategoryLabel(issue.aiCategory);
+  /* getCategoryLabel falls back to the raw id for ids it does not recognise,
+     and ai_category is a column the tenant's own session can write. Escape it
+     rather than trusting that the id came from the model. */
+  const catLabel = escapeHtml(getCategoryLabel(issue.aiCategory));
   const priInfo = getPriorityInfo(issue.aiPriorityLevel);
   const conf = issue.aiConfidence || 0;
+  const source = issue.aiPrioritySource;
 
-  let reasoning = `The model classified this as <strong>${catLabel}</strong> with ${conf}% confidence. `;
+  const parts = [];
 
-  if (conf >= 90) {
-    reasoning += `High-confidence match based on strong keyword signals in the report text. `;
-  } else if (conf >= 75) {
-    reasoning += `Moderate-to-high confidence — primary category keywords detected with some ambiguity. `;
+  /* ---- Category ---- */
+  parts.push(`Classified as <strong>${catLabel}</strong> at ${conf}% confidence.`);
+
+  if (conf >= 85) {
+    parts.push('Clear separation from the other categories.');
+  } else if (conf >= 65) {
+    parts.push('Moderate confidence — the runner-up was not far behind.');
   } else {
-    reasoning += `Lower confidence — the description may span multiple categories. Expert review recommended. `;
+    parts.push('<strong>Low confidence</strong> — the wording may not resemble anything in the training data. Worth a careful look.');
   }
 
-  reasoning += `Priority assessed as <strong>${priInfo.label}</strong> (severity index ${issue.aiPriority}/100)`;
-
-  if (issue.selfAssessment === 'urgent') {
-    reasoning += `, factoring in the tenant's self-assessed urgency.`;
-  } else {
-    reasoning += ` based on contextual severity indicators.`;
+  /* The tenant picked a category too. Disagreement is not an error on either
+     side, but it is the cheapest signal that something is ambiguous. */
+  if (issue.category && issue.aiCategory && issue.category !== issue.aiCategory) {
+    parts.push(`The tenant filed this under <strong>${escapeHtml(getCategoryLabel(issue.category))}</strong>, which disagrees with the model.`);
   }
 
-  return reasoning;
+  /* ---- Priority, and who actually decided it ----
+     The floored and keyword-fallback wordings live in shared.js so the admin
+     detail panel says the same thing; only the plain model case is phrased
+     here, because it is the one the panel states in its own layout. */
+  if (source !== 'safety_floor' && source !== 'keyword') {
+    /* Attribute to the model only when the row actually says so. NULL means
+       the report predates migration_002_ai_provenance and nothing recorded
+       which path scored it — claiming the model did would be a guess. */
+    parts.push(
+      `Priority assessed as <strong>${priInfo.label}</strong> `
+      + `(severity index ${issue.aiPriority}/100)`
+      + (source === 'model' ? ' by the model, read from the description.' : '.')
+    );
+  }
+
+  const provenance = priorityProvenanceNote(issue);
+  if (provenance) parts.push(provenance);
+
+  /* ---- A human has already changed this once ---- */
+  if (issue.preOverridePriorityLevel) {
+    parts.push(
+      `A reviewer previously changed the priority from `
+      + `<strong>${getPriorityInfo(issue.preOverridePriorityLevel).label}</strong> to the level shown.`
+    );
+  }
+
+  return parts.join(' ');
 }
 
 
@@ -327,17 +381,38 @@ function attachCardListeners() {
 }
 
 
+/* Every validation is signed. validated_by is a uuid with a foreign key to
+   profiles, so the old fallback — the literal string 'Admin' when currentUser
+   was missing — could never be stored: Postgres rejects it, updateIssue
+   throws, and the reviewer sees the button do nothing at all. Refuse up front
+   and say why instead. */
+function reviewerId() {
+  if (currentUser && currentUser.id) return currentUser.id;
+  showToast('Your session has expired. Sign in again to validate reports.', 'error');
+  return null;
+}
+
+
 /* ---------- Agree with AI ---------- */
 async function handleAgree(issueId) {
   const issue = allIssues.find(i => i.id === issueId);
   if (!issue) return;
 
-  await updateIssue(issueId, {
-    validated: true,
-    validatedBy: currentUser ? currentUser.id : 'Admin',
-    validatedAt: new Date().toISOString(),
-    overridden: false,
-  });
+  const reviewer = reviewerId();
+  if (!reviewer) return;
+
+  try {
+    await updateIssue(issueId, {
+      validated: true,
+      validatedBy: reviewer,
+      validatedAt: new Date().toISOString(),
+      overridden: false,
+    });
+  } catch (err) {
+    // Without this the card simply stayed put and nothing was said.
+    showToast(`Could not save validation: ${err.message}`, 'error');
+    return;
+  }
 
   animateCardOut(issueId, () => {
     showToast(`✓ ${issue.ticketNumber || issueId} validated — AI classification agreed`, 'success');
@@ -361,12 +436,15 @@ async function handleOverride(issueId) {
   const notesEl = document.getElementById(`notes-${issueId}`);
   const notes = notesEl ? notesEl.value.trim() : '';
 
+  const reviewer = reviewerId();
+  if (!reviewer) return;
+
   const wasOverridden = (newCategory !== issue.aiCategory) || (newPriority !== issue.aiPriorityLevel);
   const priorityChanged = newPriority !== issue.aiPriorityLevel;
 
   const patch = {
     validated: true,
-    validatedBy: currentUser ? currentUser.id : 'Admin',
+    validatedBy: reviewer,
     validatedAt: new Date().toISOString(),
     overridden: wasOverridden,
     overrideNotes: notes || null,
@@ -390,7 +468,12 @@ async function handleOverride(issueId) {
     patch.preOverridePriorityLevel = issue.aiPriorityLevel;
   }
 
-  await updateIssue(issueId, patch);
+  try {
+    await updateIssue(issueId, patch);
+  } catch (err) {
+    showToast(`Could not save override: ${err.message}`, 'error');
+    return;
+  }
 
   animateCardOut(issueId, () => {
     if (wasOverridden) {

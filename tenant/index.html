@@ -134,11 +134,12 @@ e.g., &quot;Yung aircon sa store namin parang hindi na gumagana, sobrang init na
        should read 'model', never 'keyword'. -->
   <script>window.FIRS_API_BASE = 'https://chompyy-firs-classifier.hf.space';</script>
 
-  <!-- Free Hugging Face Spaces sleep after 48h idle and take ~40s to wake,
-       but bert-api.js gives up after 8s. Firing a /health request as soon as
-       the page opens starts the wake-up while the tenant is still typing, so
-       the model is usually ready by the time they submit. Failure is ignored
-       on purpose: this is a warm-up, not a dependency. -->
+  <!-- Hugging Face Spaces go cold when idle, and a cold request was measured
+       at 7694 ms against bert-api.js's 15s ceiling — warm ones take about a
+       second. Firing a /health request as soon as the page opens starts the
+       wake-up while the tenant is still typing, so the model is usually ready
+       by the time they submit. Failure is ignored on purpose: this is a
+       warm-up, not a dependency. -->
   <script>
     fetch(window.FIRS_API_BASE + '/health', { mode: 'cors' }).catch(function () {});
   </script>
