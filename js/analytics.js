@@ -46,6 +46,11 @@ const ESTIMATED_COST_PER_ISSUE = {
 let activeRange = 'weekly';
 let chartInstances = {};
 
+/* What the charts were last drawn from, so the CSV export ships exactly the
+   rows behind the visible page rather than re-fetching and risking a file that
+   disagrees with the screen above it. Null until the first render finishes. */
+let lastRender = null;
+
 /* ---------- Helpers ---------- */
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -878,6 +883,11 @@ async function renderAll() {
     data.labels = DAY_LABELS;
   }
 
+  /* Both aggregators name the range-filtered set `weekIssues`, monthly
+     included — it is `weekIssues: monthIssues` there. Renamed on the way out
+     so the export does not inherit a misleading name. */
+  lastRender = { rangeIssues: data.weekIssues, allIssues };
+
   // Render all KPIs and charts with aggregated data
   renderKPIs(data);
   renderCategoryDoughnut(data);
@@ -911,15 +921,126 @@ function initTimeRange() {
   });
 }
 
-/* ---------- Export Buttons ---------- */
+/* ---------- Export Buttons ----------
+
+   Both of these used to be a showToast() and nothing else — they announced
+   "Report exported as PDF" / "Data exported as CSV" and produced no file at
+   all. Claiming an outcome that did not happen is worse than having no button,
+   so they now do the thing they say.
+
+   CSV exports the underlying REPORT ROWS rather than the chart summaries. The
+   charts are already on screen; what is not obtainable anywhere in the app is
+   the per-report data behind them — which reviewer changed which priority,
+   whether the model or a keyword rule scored it. Until now the only route to
+   that was the SQL editor.
+
+   There is no PDF export. One was built and removed on 2026-08-19: Chart.js
+   puts its values in hover tooltips, so a printed chart is a doughnut with no
+   percentages and a trend line with no numbers — shapes without data, which is
+   not a report. Doing it properly means print-only tables carrying the figures
+   beside each chart. Until that exists, CSV is the honest export.
+
+   The @media print block in css/admin.css was kept. It is not left over from
+   this: browsers print these pages whether or not a button invites them to,
+   and without it the output is a sidebar eating a quarter of every page with
+   the priority badges stripped of colour.
+   ============================================================ */
+
+/* Columns chosen for analysis, not for display. Provenance is included
+   because it is the difference between "the model judged this" and "the model
+   was unreachable and a keyword rule guessed".
+
+   contact_person and phone_number are deliberately EXCLUDED. They are
+   personal information under RA 10173, an exported file travels further than
+   a screen does, and no analysis of classifier behaviour needs them. */
+const CSV_COLUMNS = [
+  ['ticket_number', i => i.ticketNumber],
+  ['submitted_at', i => i.submittedAt],
+  ['updated_at', i => i.updatedAt],
+  ['store_name', i => i.storeName],
+  ['report_text', i => i.text],
+  ['tenant_category', i => i.category],
+  ['ai_category', i => i.aiCategory],
+  ['ai_confidence', i => i.aiConfidence],
+  ['ai_priority_level', i => i.aiPriorityLevel],
+  ['ai_severity_index', i => i.aiPriority],
+  ['ai_priority_source', i => i.aiPrioritySource],
+  ['ai_safety_terms', i => i.aiSafetyTerms],
+  ['model_priority_before_floor', i => i.aiModelPriority],
+  ['priority_before_human_override', i => i.preOverridePriorityLevel],
+  ['validated', i => i.validated],
+  ['overridden', i => i.overridden],
+  ['override_notes', i => i.overrideNotes],
+  ['status', i => i.status],
+  ['text_edited_at', i => i.textEditedAt],
+  /* Same definition the resolution-time chart uses (updatedAt - submittedAt on
+     resolved rows). There is no resolved_at column, so any later edit moves
+     this — approximate on purpose, and consistent with what is plotted. */
+  ['resolution_hours', i => (
+    i.status === 'resolved' && i.submittedAt && i.updatedAt
+      ? ((new Date(i.updatedAt) - new Date(i.submittedAt)) / 3600000).toFixed(2)
+      : '')],
+];
+
+/**
+ * One CSV field, RFC 4180 quoted.
+ *
+ * Also defuses CSV injection. Report text is written by tenants, and a field
+ * beginning = + - or @ is executed as a formula when the file is opened in
+ * Excel or Sheets. Prefixing an apostrophe makes it inert text; the leading
+ * quote is visible in a spreadsheet cell but the alternative is a document
+ * that runs a stranger's input on the reviewer's machine.
+ */
+function csvField(value) {
+  if (value === null || value === undefined) return '""';
+  let s = String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+function buildCSV(issues) {
+  const header = CSV_COLUMNS.map(([name]) => csvField(name)).join(',');
+  const rows = issues.map(
+    issue => CSV_COLUMNS.map(([, read]) => csvField(read(issue))).join(','));
+  return [header, ...rows].join('\r\n');
+}
+
+/** Hand the browser a file. Revoking on the next tick rather than immediately:
+    Safari has not started reading the blob when click() returns. */
+function downloadFile(filename, mime, text) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 function initExportButtons() {
-  document.getElementById('exportPdf').addEventListener('click', () => {
-    showToast('Report exported as PDF', 'success');
-  });
   document.getElementById('exportCsv').addEventListener('click', () => {
-    showToast('Data exported as CSV', 'success');
+    /* Exports what is on screen. The range buttons filter the page, and an
+       export that quietly disagreed with the charts above it would be worse
+       than no export. */
+    const issues = lastRender?.rangeIssues;
+    if (!issues || issues.length === 0) {
+      showToast('Nothing to export for this period.', 'warning');
+      return;
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    /* Excel reads a CSV as the system codepage unless a BOM says otherwise,
+       which turns Taglish text with ñ or accents into mojibake. */
+    downloadFile(
+      `firs-reports-${activeRange}-${stamp}.csv`,
+      'text/csv;charset=utf-8;',
+      '﻿' + buildCSV(issues));
+
+    showToast(`Exported ${issues.length} report${issues.length === 1 ? '' : 's'} as CSV`, 'success');
   });
+
 }
 
 /* ---------- Mobile Sidebar Toggle ---------- */

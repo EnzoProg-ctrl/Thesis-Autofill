@@ -458,3 +458,76 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+   PRINT
+
+   There is no print button anywhere in the app. This exists because people
+   press Ctrl+P regardless, and the default output of these pages is close to
+   unusable: the fixed sidebar eats a quarter of every sheet, browsers strip
+   background colours so every priority badge prints as the same grey, and
+   cards break across page boundaries.
+
+   An "Export PDF" button briefly called window.print() and was removed on
+   2026-08-19 — Chart.js keeps its values in hover tooltips, so a printed
+   chart is a doughnut with no percentages and a trend line with no numbers.
+   Reinstating it means adding print-only tables that carry the figures beside
+   each chart; see the export notes in js/analytics.js.
+
+   Everything that is navigation or a control is hidden: none of it is
+   actionable on paper.
+   ============================================================ */
+@media print {
+  .admin-sidebar,
+  .admin-topbar,
+  .toast-container,
+  .modal-overlay,
+  .slide-over-overlay,
+  .slide-over,
+  #timeRange,
+  #exportCsv {
+    display: none !important;
+  }
+
+  /* The layout offsets content to clear the fixed sidebar. With the sidebar
+     gone that margin is just a blank column down the left of every page. */
+  .admin-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  /* Browsers drop background colours when printing unless asked. Without this
+     the priority badges lose their fill and every severity reads identically
+     on paper — the one thing the reader is looking for. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Do not split a chart or a KPI tile across a page boundary. */
+  .analytics-card,
+  .kpi-card,
+  .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Canvases are sized by Chart.js in pixels for the screen; let them shrink
+     to the paper width instead of being clipped at the margin. */
+  canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
