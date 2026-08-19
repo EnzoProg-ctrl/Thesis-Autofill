@@ -5,7 +5,8 @@
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
 import { CATEGORIES, STATUS_LIST, getCategoryLabel } from './app-data.js';
-import { loadIssues, initSidebarToggle, showToast, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, initSidebarToggle, showToast, resolutionHoursFor, mean, formatHours, aiAgreement,
+         openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 
 /* ---------- Auth Guard ---------- */
 if (!(await checkAuth(['admin', 'staff']))) {
@@ -154,27 +155,38 @@ function aggregateWeeklyData(allIssues) {
     }
   }
 
-  // --- Avg resolution time by category (hours) ---
-  // Only resolved issues with both submittedAt and updatedAt
+  /* --- Resolution time ---
+     Two shapes, deliberately.
+
+     `resolutionHours` is every resolved report's hours in ONE flat list, and
+     the headline KPI averages that. It used to average the per-category
+     averages instead, which weights a category holding one report the same as
+     a category holding twenty.
+
+     `avgResolutionTime` stays per-category for the bar chart, but categories
+     with no resolved reports are now OMITTED rather than stored as 0, and the
+     values are no longer rounded here. Both mattered: the old code rounded
+     first and then filtered on `> 0`, so a category resolved in under thirty
+     minutes rounded to 0 and was discarded as though it had no data. On
+     2026-08-19 that turned a true average of 11.1 h (22.20 h and 0.04 h) into
+     a displayed 22 h — the two-minute fix was deleted and the mean taken over
+     the single survivor. The bias only ever ran one way: the faster the work,
+     the worse the number looked. */
   const resolutionBuckets = {};
-  for (const cat of catKeys) resolutionBuckets[cat] = [];
+  const resolutionHours = [];
 
   for (const issue of weekIssues) {
-    if (issue.status === 'resolved' && issue.submittedAt && issue.updatedAt) {
-      const cat = issue.aiCategory || issue.category || 'other';
-      const hours = (new Date(issue.updatedAt) - new Date(issue.submittedAt)) / (1000 * 60 * 60);
-      if (resolutionBuckets[cat]) {
-        resolutionBuckets[cat].push(hours);
-      }
-    }
+    const hours = resolutionHoursFor(issue);
+    if (hours === null) continue;
+    resolutionHours.push(hours);
+    const cat = issue.aiCategory || issue.category || 'other';
+    if (!catKeys.includes(cat)) continue;
+    (resolutionBuckets[cat] ||= []).push(hours);
   }
 
   const avgResolutionTime = {};
-  for (const cat of catKeys) {
-    const arr = resolutionBuckets[cat];
-    avgResolutionTime[cat] = arr.length > 0
-      ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
-      : 0;
+  for (const [cat, arr] of Object.entries(resolutionBuckets)) {
+    avgResolutionTime[cat] = mean(arr);
   }
 
   // --- AI Accuracy per day ---
@@ -220,6 +232,7 @@ function aggregateWeeklyData(allIssues) {
     categoryTotals,
     priorityTrends,
     avgResolutionTime,
+    resolutionHours,
     aiAccuracy,
     budgetByCategory,
     statusCounts,
@@ -279,26 +292,38 @@ function aggregateMonthlyData(allIssues) {
     }
   }
 
-  // --- Avg resolution time by category (hours) ---
+  /* --- Resolution time ---
+     Two shapes, deliberately.
+
+     `resolutionHours` is every resolved report's hours in ONE flat list, and
+     the headline KPI averages that. It used to average the per-category
+     averages instead, which weights a category holding one report the same as
+     a category holding twenty.
+
+     `avgResolutionTime` stays per-category for the bar chart, but categories
+     with no resolved reports are now OMITTED rather than stored as 0, and the
+     values are no longer rounded here. Both mattered: the old code rounded
+     first and then filtered on `> 0`, so a category resolved in under thirty
+     minutes rounded to 0 and was discarded as though it had no data. On
+     2026-08-19 that turned a true average of 11.1 h (22.20 h and 0.04 h) into
+     a displayed 22 h — the two-minute fix was deleted and the mean taken over
+     the single survivor. The bias only ever ran one way: the faster the work,
+     the worse the number looked. */
   const resolutionBuckets = {};
-  for (const cat of catKeys) resolutionBuckets[cat] = [];
+  const resolutionHours = [];
 
   for (const issue of monthIssues) {
-    if (issue.status === 'resolved' && issue.submittedAt && issue.updatedAt) {
-      const cat = issue.aiCategory || issue.category || 'other';
-      const hours = (new Date(issue.updatedAt) - new Date(issue.submittedAt)) / (1000 * 60 * 60);
-      if (resolutionBuckets[cat]) {
-        resolutionBuckets[cat].push(hours);
-      }
-    }
+    const hours = resolutionHoursFor(issue);
+    if (hours === null) continue;
+    resolutionHours.push(hours);
+    const cat = issue.aiCategory || issue.category || 'other';
+    if (!catKeys.includes(cat)) continue;
+    (resolutionBuckets[cat] ||= []).push(hours);
   }
 
   const avgResolutionTime = {};
-  for (const cat of catKeys) {
-    const arr = resolutionBuckets[cat];
-    avgResolutionTime[cat] = arr.length > 0
-      ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
-      : 0;
+  for (const [cat, arr] of Object.entries(resolutionBuckets)) {
+    avgResolutionTime[cat] = mean(arr);
   }
 
   // --- AI Accuracy per day-of-month ---
@@ -344,6 +369,7 @@ function aggregateMonthlyData(allIssues) {
     categoryTotals,
     priorityTrends,
     avgResolutionTime,
+    resolutionHours,
     aiAccuracy,
     budgetByCategory,
     statusCounts,
@@ -367,7 +393,7 @@ function formatPHP(value) {
 /* ---------- KPI Calculations ---------- */
 
 function renderKPIs(data) {
-  const { issuesByDay, categoryTotals, avgResolutionTime, aiAccuracy, weekIssues } = data;
+  const { issuesByDay, categoryTotals, resolutionHours, aiAccuracy, weekIssues } = data;
 
   const periodLabel = activeRange === 'monthly' ? 'this month' : 'this week';
 
@@ -405,28 +431,35 @@ function renderKPIs(data) {
   }
   document.getElementById('kpiTopCategoryCount').className = 'kpi-trend';
 
-  // 3. Avg Resolution Time (across resolved issues this week)
-  const resVals = Object.values(avgResolutionTime).filter(v => v > 0);
-  const avgRes = resVals.length > 0
-    ? Math.round(resVals.reduce((s, v) => s + v, 0) / resVals.length)
-    : 0;
-  document.getElementById('kpiAvgResolution').textContent = avgRes > 0 ? `${avgRes}h` : '—';
-  document.getElementById('kpiResolutionNote').textContent = resVals.length > 0
-    ? 'Across resolved issues'
-    : `No resolved issues ${periodLabel}`;
+  /* 3. Avg Resolution Time — the mean over every resolved report, not the mean
+        of the per-category means. The note now states how many reports it is
+        actually averaging: "22h" over a single report and "22h" over forty are
+        very different claims, and during the pilot this will often be one or
+        two. */
+  const avgRes = mean(resolutionHours);
+  document.getElementById('kpiAvgResolution').textContent = formatHours(avgRes);
+  document.getElementById('kpiResolutionNote').textContent = avgRes === null
+    ? `No resolved issues ${periodLabel}`
+    : `Across ${resolutionHours.length} resolved issue${resolutionHours.length === 1 ? '' : 's'}`;
   document.getElementById('kpiResolutionNote').className = 'kpi-trend';
 
-  // 4. AI Accuracy (overall for the week)
-  const totalValidated = weekIssues.filter(i => i.validated).length;
-  const totalCorrect = weekIssues.filter(i => i.validated && !i.overridden).length;
-  const overallAccuracy = totalValidated > 0 ? Math.round((totalCorrect / totalValidated) * 100) : 0;
+  /* 4. AI Accuracy — same definition as the dashboard and the HITL panel, from
+        shared.js. This is the week's scope rather than all time, which is why
+        it can legitimately differ from the other two screens; what it must not
+        do is differ because it is counting something else, which is how the
+        dashboard ended up showing 62% beside HITL's 86%.
 
-  document.getElementById('kpiAiAccuracy').textContent = totalValidated > 0 ? `${overallAccuracy}%` : '—';
+        "not overridden" rather than "correct": nobody established ground
+        truth, a reviewer simply let the model's answer stand. */
+  const agreement = aiAgreement(weekIssues);
+
+  document.getElementById('kpiAiAccuracy').textContent =
+    agreement.pct === null ? '—' : `${agreement.pct}%`;
 
   const accTrendEl = document.getElementById('kpiAccuracyTrend');
-  if (totalValidated > 0) {
-    accTrendEl.className = overallAccuracy >= 90 ? 'kpi-trend down' : 'kpi-trend up';
-    accTrendEl.textContent = `${totalCorrect}/${totalValidated} validated correct`;
+  if (agreement.validated > 0) {
+    accTrendEl.className = agreement.pct >= 90 ? 'kpi-trend down' : 'kpi-trend up';
+    accTrendEl.textContent = `${agreement.agreed}/${agreement.validated} not overridden`;
   } else {
     accTrendEl.className = 'kpi-trend';
     accTrendEl.textContent = `No validated issues ${periodLabel}`;
@@ -585,8 +618,11 @@ function renderPriorityDist(data) {
 
 function renderResolutionTime(data) {
   const { avgResolutionTime } = data;
+  /* No `> 0` filter any more. avgResolutionTime now contains an entry only for
+     categories that actually have a resolved report, so presence is the test —
+     the old filter silently dropped any category resolved in under half an
+     hour, because the value had already been rounded to 0. */
   const sortedEntries = Object.entries(avgResolutionTime)
-    .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1]);
 
   // If no resolved issues, show placeholder
@@ -595,7 +631,10 @@ function renderResolutionTime(data) {
     : Object.keys(CATEGORY_COLORS).map(k => [k, 0]);
 
   const labels = entries.map(([k]) => getCategoryLabel(k));
-  const chartData = entries.map(([, v]) => v);
+  /* Two decimals, not whole hours: a report resolved in two minutes is 0.04,
+     and rounding it to 0 is exactly the mistake this chart used to make. The
+     bar will be a sliver, which is the honest picture. */
+  const chartData = entries.map(([, v]) => Number(v.toFixed(2)));
   const colors = entries.map(([k]) => CATEGORY_COLORS[k] || '#94a3b8');
 
   chartInstances.resolutionTime = new Chart(
@@ -973,13 +1012,15 @@ const CSV_COLUMNS = [
   ['override_notes', i => i.overrideNotes],
   ['status', i => i.status],
   ['text_edited_at', i => i.textEditedAt],
-  /* Same definition the resolution-time chart uses (updatedAt - submittedAt on
-     resolved rows). There is no resolved_at column, so any later edit moves
-     this — approximate on purpose, and consistent with what is plotted. */
-  ['resolution_hours', i => (
-    i.status === 'resolved' && i.submittedAt && i.updatedAt
-      ? ((new Date(i.updatedAt) - new Date(i.submittedAt)) / 3600000).toFixed(2)
-      : '')],
+  /* Empty on reports resolved before migration_006 added the column — those
+     rows fall back to updated_at for the hours below, and the blank is how you
+     tell a measured resolution from an inferred one. */
+  ['resolved_at', i => i.resolvedAt],
+  /* Same helper the charts use, so the file and the page cannot disagree. */
+  ['resolution_hours', i => {
+    const h = resolutionHoursFor(i);
+    return h === null ? '' : h.toFixed(2);
+  }],
 ];
 
 /**

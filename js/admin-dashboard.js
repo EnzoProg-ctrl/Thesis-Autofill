@@ -4,7 +4,8 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, priorityProvenanceNote, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, formatDate, formatRelativeTime, formatActivityTime, getLatestActivityTime, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, showModal, closeModal, showSlideOver, closeSlideOver, escapeHtml, priorityProvenanceNote, resolutionHoursFor, mean, formatHours,
+  aiAgreement, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, PRIORITY_LEVELS, STATUS_LIST, getCategoryLabel, getCategoryIcon, getStatusInfo, getPriorityInfo, getPriorityRank, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
@@ -111,36 +112,54 @@ function renderKPIs() {
   const openIssues = issues.filter(i => i.status !== 'resolved');
   const criticalIssues = issues.filter(i => i.aiPriorityLevel === 'critical' && i.status !== 'resolved');
 
-  // Avg resolution time (from resolved issues that have submittedAt and updatedAt)
-  const resolved = issues.filter(i => i.status === 'resolved');
-  let avgHours = 0;
-  if (resolved.length > 0) {
-    const totalHrs = resolved.reduce((sum, i) => {
-      const submitted = new Date(i.submittedAt);
-      const updated = new Date(i.updatedAt);
-      return sum + (updated - submitted) / 3600000;
-    }, 0);
-    avgHours = Math.round(totalHrs / resolved.length);
-  }
+  /* Avg resolution time.
+     This used to subtract submittedAt from updatedAt directly, which is not a
+     repair time: updated_at moves on EVERY write, so two July reports somebody
+     opened in August read as ~550 h each and dragged the dashboard figure to
+     280 h. resolutionHoursFor() prefers resolved_at, which is stamped once and
+     never moves. Shared with analytics.js — the same calculation lived in both
+     files and was wrong in two different ways. */
+  const resolutionHours = issues
+    .map(resolutionHoursFor)
+    .filter(h => h !== null);
+  const avgHours = mean(resolutionHours);
 
-  // AI accuracy (validated issues where aiCategory === category chosen by user)
-  const validated = issues.filter(i => i.validated);
-  let accuracy = 0;
-  if (validated.length > 0) {
-    const correct = validated.filter(i => i.aiCategory === i.category);
-    accuracy = Math.round((correct.length / validated.length) * 100);
-  }
+  /* AI accuracy.
+     This used to compare aiCategory against `category` — the TENANT'S dropdown
+     choice — and call the result accuracy. That measures whether tenants pick
+     the same category as the model, not whether the model was right, and it
+     put 62% on this screen beside the HITL queue's 86% for the same reports.
+     aiAgreement() is now the single definition: validated, not overridden. */
+  const agreement = aiAgreement(issues);
 
   document.getElementById('kpi-open').textContent = openIssues.length;
   document.getElementById('kpi-critical').textContent = criticalIssues.length;
-  document.getElementById('kpi-resolution').textContent = avgHours + 'h';
-  document.getElementById('kpi-accuracy').textContent = accuracy + '%';
+  document.getElementById('kpi-resolution').textContent = formatHours(avgHours);
+  document.getElementById('kpi-accuracy').textContent =
+    agreement.pct === null ? '—' : agreement.pct + '%';
 
   // Trend indicators
   setTrend('kpi-open-trend', openIssues.length, 'issues open', true);
   setTrend('kpi-critical-trend', criticalIssues.length, 'need attention', true);
-  setTrend('kpi-resolution-trend', avgHours, 'hrs average', false);
-  setTrend('kpi-accuracy-trend', accuracy, '% validated match', false);
+
+  /* These two say what they are counted over. "280h" over four reports and
+     "280h" over four hundred are not the same claim, and during the pilot
+     these denominators will often be tiny. */
+  const resEl = document.getElementById('kpi-resolution-trend');
+  if (resEl) {
+    resEl.className = 'kpi-trend';
+    resEl.textContent = resolutionHours.length === 0
+      ? 'No resolved issues yet'
+      : `Across ${resolutionHours.length} resolved issue${resolutionHours.length === 1 ? '' : 's'}`;
+  }
+
+  const accEl = document.getElementById('kpi-accuracy-trend');
+  if (accEl) {
+    accEl.className = 'kpi-trend';
+    accEl.textContent = agreement.validated === 0
+      ? 'No validated issues yet'
+      : `${agreement.agreed}/${agreement.validated} not overridden`;
+  }
 }
 
 function setTrend(id, value, label, isUpBad) {

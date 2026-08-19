@@ -4,7 +4,7 @@
 
 import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
-import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, priorityProvenanceNote, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+import { loadIssues, loadIssueImage, loadIssueIdsWithImages, updateIssue, renderTopbarUser, initSidebarToggle, initImageLightbox, showToast, formatRelativeTime, escapeHtml, priorityProvenanceNote, aiAgreement, localDateKey, openCreateUserModal, openEditAdminProfileModal } from './shared.js';
 import { CATEGORIES, getCategoryLabel, getCategoryIcon, getPriorityInfo, getUsers } from './app-data.js';
 
 /* ---------- Auth Guard ---------- */
@@ -537,16 +537,22 @@ async function updateStats() {
   // Total validated
   statTotalEl.textContent = totalValidated;
 
-  // AI agreement rate: validated issues where overridden is not true
-  if (totalValidated > 0) {
-    const agreed = validated.filter(i => !i.overridden).length;
-    const rate = Math.round((agreed / totalValidated) * 100);
-    statAgreementEl.textContent = rate + '%';
-  } else {
-    statAgreementEl.textContent = '—';
-  }
+  /* AI agreement rate — from shared.js, the one definition of this number.
+     The dashboard used to compute its own "AI accuracy" by a different rule
+     and showed 62% while this panel showed 86% for the same reports. */
+  const agreement = aiAgreement(allIssues);
+  statAgreementEl.textContent = agreement.pct === null ? '—' : agreement.pct + '%';
+  statAgreementEl.title = agreement.validated === 0
+    ? 'No validated reports yet'
+    : `${agreement.agreed} of ${agreement.validated} validated reports were accepted without an override`;
 
-  // Most overridden category
+  /* Most overridden category.
+     Only stated when one category is genuinely ahead. Sorting and taking the
+     first entry reported a winner even when every category was tied on one
+     override each — with 3 overrides split across electrical, hvac and
+     structural it displayed "Electrical", which was really just whichever key
+     landed in the object first. A tie is not a finding, and this panel is the
+     evidence a reviewer uses to decide where the model is weak. */
   const overridden = validated.filter(i => i.overridden === true);
   if (overridden.length > 0) {
     const catCounts = {};
@@ -554,10 +560,17 @@ async function updateStats() {
       const cat = i.aiCategory || 'other';
       catCounts[cat] = (catCounts[cat] || 0) + 1;
     });
-    const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
-    statOverriddenEl.textContent = getCategoryLabel(topCat[0]);
+    const ranked = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+    const clearWinner = ranked.length === 1 || ranked[0][1] > ranked[1][1];
+    statOverriddenEl.textContent = clearWinner
+      ? `${getCategoryLabel(ranked[0][0])} (${ranked[0][1]})`
+      : '—';
+    statOverriddenEl.title = clearWinner
+      ? `${ranked[0][1]} of ${overridden.length} overrides were reports the model called ${getCategoryLabel(ranked[0][0])}`
+      : `No single category leads — ${ranked.map(([c, n]) => `${getCategoryLabel(c)} ${n}`).join(', ')}`;
   } else {
     statOverriddenEl.textContent = '—';
+    statOverriddenEl.title = 'No overrides recorded yet';
   }
 
   // Avg confidence of overrides
@@ -568,11 +581,15 @@ async function updateStats() {
     statAvgConfEl.textContent = '—';
   }
 
-  // Today's validations
-  const today = new Date().toISOString().slice(0, 10);
+  /* Today's validations, in the REVIEWER'S timezone.
+     Both sides used toISOString().slice(0,10), which is the UTC date. In
+     Manila (UTC+8) that is still yesterday until 8am, so anything validated
+     during the early shift was counted against the previous day — and it
+     disagreed with analytics.js, which computes its week bounds locally. */
+  const today = localDateKey();
   const todayCount = validated.filter(i => {
-    const vDate = i.validatedAt || i.updatedAt || '';
-    return vDate.slice(0, 10) === today;
+    const when = i.validatedAt || i.updatedAt;
+    return when ? localDateKey(when) === today : false;
   }).length;
   statTodayEl.textContent = todayCount;
 }

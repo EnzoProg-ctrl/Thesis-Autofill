@@ -31,6 +31,10 @@ const ISSUE_LIST_COLUMNS = [
      keyword rule rather than judged by the model, or that the model never ran
      at all. See generateReasoning() in hitl.js. */
   'ai_priority_source', 'ai_safety_terms', 'ai_model_priority',
+  /* Set by a trigger when status becomes 'resolved' and NOT moved by later
+     edits — unlike updated_at, which every write bumps. See
+     migration_006_resolved_at.sql. */
+  'resolved_at',
 ].join(',');
 
 /* Newest 500 reports. The dashboards render every row they are given into the
@@ -205,6 +209,10 @@ function mapIssueFromDB(row) {
     aiPrioritySource: row.ai_priority_source,
     aiSafetyTerms: row.ai_safety_terms,
     aiModelPriority: row.ai_model_priority,
+    /* NULL on reports that predate migration_006, and on anything never
+       resolved or since reopened. Callers measuring resolution time fall back
+       to updatedAt for the historical rows — see resolutionHoursFor(). */
+    resolvedAt: row.resolved_at,
     // Set only when the tenant edits the description — NOT bumped by
     // status changes or validation, unlike updatedAt.
     textEditedAt: row.text_edited_at,
@@ -557,6 +565,97 @@ export function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+
+/* ---------- Metrics ----------
+
+   These live here rather than in whichever dashboard needed them first,
+   because both admin-dashboard.js and analytics.js compute "average
+   resolution time" and "AI accuracy", and both got them wrong in DIFFERENT
+   ways while looking equally plausible on screen:
+
+     * analytics averaged the per-category averages and rounded before
+       filtering, so a two-minute fix rounded to 0, was discarded as "no data",
+       and 11.1 h displayed as 22 h
+     * the dashboard averaged raw updated_at deltas, so two July reports
+       somebody opened in August read as 550 h each and dragged the figure to
+       280 h
+     * the dashboard called ai_category === category "AI accuracy" while the
+       HITL queue called validated-and-not-overridden the same thing, and the
+       two screens disagreed by 24 points on identical data
+
+   One definition each, imported everywhere. A number that appears on three
+   screens must be computed in one place.
+   ---------------------------------------------------------- */
+
+/**
+ * Hours from submission to resolution, or null when the report is not
+ * resolved or cannot be measured.
+ *
+ * Prefers resolved_at, which a trigger stamps once and later edits do not
+ * move. Falls back to updated_at for rows predating migration_006 — those are
+ * approximations, and `resolvedAt` being null is how you tell them apart.
+ *
+ * updated_at is bumped by EVERY write, so using it alone measures "time until
+ * somebody last touched this", which is not a repair time and keeps growing
+ * after the repair is done.
+ */
+export function resolutionHoursFor(issue) {
+  if (!issue || issue.status !== 'resolved' || !issue.submittedAt) return null;
+  const end = issue.resolvedAt || issue.updatedAt;
+  if (!end) return null;
+  const hours = (new Date(end) - new Date(issue.submittedAt)) / 3600000;
+  return Number.isFinite(hours) && hours >= 0 ? hours : null;
+}
+
+/** Mean of a list, or null when there is nothing to average. Null rather than
+    0 so "no data" stays distinguishable from "an average that happens to be
+    zero" — conflating those is what produced the 22 h reading. */
+export function mean(values) {
+  if (!values || values.length === 0) return null;
+  return values.reduce((s, v) => s + v, 0) / values.length;
+}
+
+/** Hours as a short label: minutes below an hour, days above one. */
+export function formatHours(h) {
+  if (h === null || h === undefined) return '—';
+  if (h < 1) return `${Math.round(h * 60)}m`;
+  if (h < 24) return `${h < 10 ? h.toFixed(1) : Math.round(h)}h`;
+  return `${(h / 24).toFixed(1)}d`;
+}
+
+/**
+ * How often a human reviewer let the model's answer stand.
+ *
+ * THE definition of "AI accuracy" in this app. The dashboard used to compare
+ * ai_category against the TENANT'S dropdown instead, which measures whether
+ * tenants pick the same category as the model — a different question, and it
+ * showed 62% beside the HITL queue's 86% on the same reports.
+ *
+ * Note what this does NOT capture: a reviewer who skips a report never enters
+ * either count, so hard cases are absent from the denominator entirely.
+ *
+ * @returns {{validated:number, agreed:number, pct:number|null}}
+ */
+export function aiAgreement(issues) {
+  const validated = (issues || []).filter(i => i.validated);
+  const agreed = validated.filter(i => !i.overridden);
+  return {
+    validated: validated.length,
+    agreed: agreed.length,
+    pct: validated.length ? Math.round((agreed.length / validated.length) * 100) : null,
+  };
+}
+
+/** YYYY-MM-DD in the VIEWER'S timezone. `toISOString().slice(0,10)` gives the
+    UTC date, which in Manila (UTC+8) is still yesterday until 8am — so a
+    reviewer validating at 7am was counted under the previous day. */
+export function localDateKey(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 
