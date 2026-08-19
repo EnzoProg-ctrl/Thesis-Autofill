@@ -114,7 +114,10 @@
             <span class="live-dot"></span> Live
           </div>
           <div class="topbar-user">
-            <span class="topbar-role">Admin</span>
+            <!-- Filled by shared.js renderTopbarUser(). Not hardcoded: staff
+                 can reach this page (applyRBAC only hides links), and the
+                 literal "Admin" that used to sit here labelled them wrongly. -->
+            <span class="topbar-role"></span>
             <!-- Filled by shared.js renderTopbarUser(). Left empty on purpose:
                  a placeholder here would visibly change once JS runs. -->
             <span class="topbar-name hide-mobile"></span>

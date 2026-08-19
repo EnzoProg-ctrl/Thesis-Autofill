@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { supabase } from './supabase-client.js';
-import { getUsers, tradeOptionsHTML, getTradeInitials, getPriorityInfo } from './app-data.js';
+import { getUsers, tradeOptionsHTML, getTradeInitials, getTradeLabel, getPriorityInfo } from './app-data.js';
 
 /* ---------- Supabase Issue Operations (async) ---------- */
 
@@ -312,17 +312,30 @@ export function getLatestActivityTime(issue) {
 /* ---------- Topbar ---------- */
 
 /**
- * Fill in the signed-in user's name next to the static role pill.
+ * Fill in the signed-in user's name and role pill.
  *
  * One implementation for every admin page. Each page used to carry its own
  * copy, which is how hitl.html ended up with a name that was hardcoded in the
  * markup and never updated at all.
  *
- * The name span is left EMPTY in the HTML rather than seeded with a
- * placeholder. An empty slot filling in reads as the page finishing loading;
- * a placeholder being swapped for a different value reads as the page
- * changing its mind, which is what the old placeholder -> "SA" flip looked
- * like.
+ * Both slots are left EMPTY in the HTML rather than seeded with a placeholder.
+ * An empty slot filling in reads as the page finishing loading; a placeholder
+ * being swapped for a different value reads as the page changing its mind,
+ * which is what the old placeholder -> "SA" flip looked like.
+ *
+ * THE PILL
+ * --------
+ * For staff it shows their TRADE — Electrician, Plumber, HVAC — rather than
+ * the generic word "Staff", which told a technician nothing they did not
+ * already know.
+ *
+ * It was static markup until 2026-08-19, and being static it was also wrong:
+ * applyRBAC() only hides links, so a staff member can open admin/index.html,
+ * where the pill was hardcoded "Admin". They were shown someone else's role.
+ * Reading it from the session fixes the label and that mislabelling together.
+ *
+ * Falls back to "Staff" when a profile carries no trade, and to "Admin" for
+ * every non-staff role, so the pill is never blank once the session resolves.
  */
 export function renderTopbarUser() {
   const nameEl = document.querySelector('.topbar-name');
@@ -330,6 +343,12 @@ export function renderTopbarUser() {
   let user = null;
   try { user = JSON.parse(sessionStorage.getItem('firs_user')); } catch (e) { /* ignore */ }
   nameEl.textContent = user?.name || '';
+
+  const roleEl = document.querySelector('.topbar-role');
+  if (!roleEl || !user) return;           // no pill, or nothing to say yet
+  roleEl.textContent = user.role === 'staff'
+    ? (getTradeLabel(user.trade) || 'Staff')
+    : 'Admin';
 }
 
 

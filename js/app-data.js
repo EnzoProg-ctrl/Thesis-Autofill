@@ -94,6 +94,16 @@ export function getTradeInitials(tradeId) {
   return t ? t.initials : 'GN';
 }
 
+/** Display label for a trade id — 'Carpenter' reads as 'Carpenter / Mason'.
+    Unknown ids fall back to the id itself rather than to a default: a profile
+    still carrying a retired trade (the removed 'Security', say) should show
+    what it actually holds, not silently read as something else. Empty for a
+    missing trade, so callers can pick their own fallback. */
+export function getTradeLabel(tradeId) {
+  const t = TRADES.find(t => t.id === tradeId);
+  return t ? t.label : (tradeId || '');
+}
+
 /** <option> markup for a trade dropdown, marking `selected` as the chosen one.
     Joined with no separator: whitespace between <option> tags is not
     rendered, so there is nothing to gain from formatting it. */

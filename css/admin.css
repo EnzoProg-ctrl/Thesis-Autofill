@@ -181,11 +181,17 @@
 }
 
 /* Role pill. Replaces the old .topbar-avatar initials circle, which showed a
-   different set of initials on every page and was overwritten by JS
-   after load, so the label visibly changed a moment after the page painted.
-   This is a static role name — nothing rewrites it, so there is no flicker. */
+   different set of initials on every page and was overwritten by JS after
+   load, so the label visibly changed a moment after the page painted.
+
+   Filled by shared.js renderTopbarUser() — staff see their trade, admins see
+   "Admin". That is a rewrite, but not the old flicker: the markup ships EMPTY,
+   so the pill fills in once rather than replacing a value the reader already
+   read. min-width reserves the space so the topbar does not shift when it
+   lands. */
 .admin-topbar .topbar-role {
   height: 32px;
+  min-width: 84px;
   padding: 0 var(--sp-4);
   background: var(--primary-100);
   color: var(--primary-700);

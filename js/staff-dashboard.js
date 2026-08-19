@@ -53,8 +53,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ---------- Topbar Personalization ---------- */
-/* The role pill (.topbar-role) is static markup; only the name is filled in.
-   See admin-dashboard.js for why the old initials rewrite was dropped. */
+/* renderTopbarUser() fills both the name and the role pill. On this page the
+   pill shows the technician's TRADE — Electrician, Plumber, HVAC — rather
+   than the generic "Staff" it used to carry, which told them nothing they did
+   not already know. See admin-dashboard.js for why this is not a return of
+   the old initials flicker. */
 function personalizeTopbar() { renderTopbarUser(); }
 
 /* ---------- KPIs ---------- */

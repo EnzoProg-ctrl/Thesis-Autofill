@@ -91,11 +91,16 @@ function applyRBAC() {
   }
 }
 
-/* The role pill (.topbar-role) is static markup; only the name is filled in.
-   This used to also rewrite the pill with currentUser.avatar, which is what
-   made it flip from its hardcoded placeholder to "SA" a moment after load —
-   avatar_initials is 'SA' for every admin, so that rewrite carried no
-   information at all. */
+/* renderTopbarUser() fills both the name and the role pill. The pill shows a
+   staff member's trade and an admin's "Admin", read from the session — this
+   page is reachable by staff (applyRBAC above only hides links), so the
+   literal "Admin" that used to be hardcoded in the markup was showing them
+   the wrong role.
+
+   Not a return of the old flicker: that came from rewriting a pill that
+   already had a visible value, with currentUser.avatar — 'SA' for every
+   admin, so it carried no information and only ever read as a glitch. The
+   markup now ships empty and fills in once. */
 function personalizeTopbar() { renderTopbarUser(); }
 
 /* ==========================================================

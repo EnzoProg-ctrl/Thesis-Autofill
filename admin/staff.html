@@ -78,7 +78,11 @@
             <span class="live-dot"></span> Live
           </div>
           <div class="topbar-user">
-            <span class="topbar-role">Staff</span>
+            <!-- Filled by shared.js renderTopbarUser(): a staff member sees
+                 their TRADE here, an admin sees "Admin". Left empty on
+                 purpose — a hardcoded value would visibly change once JS
+                 runs, which is the flicker the old initials pill had. -->
+            <span class="topbar-role"></span>
             <span class="topbar-name hide-mobile"></span>
           </div>
         </div>
