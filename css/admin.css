@@ -348,6 +348,13 @@
   color: var(--warning-600);
 }
 
+/* display:flex above is an author rule and so outranks the browser's built-in
+   [hidden] { display: none }. Without this the hint stayed on screen after a
+   reset even though the attribute was set. */
+.hitl-dirty-hint[hidden] {
+  display: none;
+}
+
 .hitl-reset-btn {
   background: none;
   border: none;
