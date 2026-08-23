@@ -559,11 +559,21 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
+  /* inset alone resolves against the LARGE viewport on mobile Safari — the one
+     measured with the toolbars retracted — so the geometric centre sits lower
+     than the centre the user actually sees, and a tall modal ends up with its
+     buttons under the address bar. dvh tracks the visible viewport instead;
+     browsers without it drop the line and fall back to the inset stretch. */
+  height: 100dvh;
   background: rgba(15, 23, 42, 0.4);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* A modal taller than the overlay would otherwise have its top clipped and
+     unreachable: centred flex items overflow equally in both directions and
+     you cannot scroll up past the container's start edge. */
+  overflow-y: auto;
   padding: var(--sp-4);
   animation: fade-in 0.15s ease;
 }
@@ -574,7 +584,11 @@
   box-shadow: var(--shadow-lg);
   max-width: 520px;
   width: 100%;
+  /* auto margins centre the box while there is room and collapse to the
+     padding edge when there is not, which keeps the top reachable. */
+  margin: auto;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   animation: modal-in 0.2s ease;
 }
@@ -601,6 +615,29 @@
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-6);
   border-top: 1px solid var(--gray-200);
+}
+
+/* Delete / Cancel / Save does not fit across a phone-width modal, and
+   justify-content: flex-end spills the overflow off the LEFT edge — so
+   "Delete Report" was half cut off and could not be tapped. Stack them full
+   width below 480px, destructive action last so it is not what a thumb
+   reaches first. margin-right on the delete button is set inline, hence the
+   !important. */
+@media (max-width: 480px) {
+  .modal-footer {
+    flex-wrap: wrap;
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+
+  .modal-footer > .btn {
+    flex: 1 1 100%;
+    margin-right: 0 !important;
+  }
+
+  .modal-footer > .btn-primary { order: 1; }
+  .modal-footer > .btn-secondary { order: 2; }
+  .modal-footer > .btn-danger { order: 3; }
 }
 
 @keyframes fade-in {
