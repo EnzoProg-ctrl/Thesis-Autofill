@@ -238,7 +238,7 @@ function renderCards() {
             <div class="override-grid">
               <div class="form-group" style="margin-bottom:0">
                 <label class="form-label" for="cat-${issue.id}">Category</label>
-                <select class="form-select" id="cat-${issue.id}" data-issue="${issue.id}">
+                <select class="form-select hitl-cat-select" id="cat-${issue.id}" data-issue="${issue.id}">
                   ${catOptions}
                 </select>
               </div>
@@ -262,6 +262,10 @@ function renderCards() {
           <button class="btn btn-success" data-action="agree" data-issue="${issue.id}">✓ Agree with AI</button>
           <button class="btn btn-primary" data-action="override" data-issue="${issue.id}">Override &amp; Validate</button>
           <button class="btn btn-ghost" data-action="skip" data-issue="${issue.id}" data-idx="${idx}">Skip</button>
+          <span class="hitl-dirty-hint" id="dirty-${issue.id}" hidden>
+            <span class="hitl-dirty-text"></span>
+            <button type="button" class="hitl-reset-btn" data-action="reset" data-issue="${issue.id}">Reset to AI</button>
+          </span>
         </div>
       </div>
     `;
@@ -354,6 +358,66 @@ function generateReasoning(issue) {
 }
 
 
+/* Keep "Agree with AI" honest.
+
+   handleAgree writes validated + overridden:false and nothing else — it never
+   reads the category select or the priority buttons. So a reviewer who moved
+   the priority band and then clicked Agree had their correction silently
+   dropped, and the report was recorded as agreement. That inflates the AI
+   agreement rate, which is the one number the human-in-the-loop analysis
+   exists to produce, and it leaves no trace: the discarded value was never
+   written anywhere, so it cannot be detected or recovered afterwards.
+
+   Rather than warn after the fact, withdraw the button while the controls
+   disagree with the model. The only way forward is then Override & Validate,
+   which does record the change. */
+function syncAgreeState(issueId) {
+  const issue = allIssues.find(i => i.id === issueId);
+  if (!issue) return;
+
+  const catSelect = document.getElementById(`cat-${issueId}`);
+  const activeBtn = document.querySelector(`#priority-seg-${issueId} .priority-seg-btn.active`);
+  const agreeBtn = document.querySelector(`[data-action="agree"][data-issue="${issueId}"]`);
+  const hint = document.getElementById(`dirty-${issueId}`);
+  if (!catSelect || !agreeBtn || !hint) return;
+
+  const catChanged = catSelect.value !== issue.aiCategory;
+  const priChanged = activeBtn ? activeBtn.dataset.priority !== issue.aiPriorityLevel : false;
+  const changed = catChanged || priChanged;
+
+  agreeBtn.disabled = changed;
+  hint.hidden = !changed;
+
+  if (changed) {
+    const what = catChanged && priChanged ? 'the category and priority'
+      : catChanged ? 'the category'
+        : 'the priority';
+    hint.querySelector('.hitl-dirty-text').textContent =
+      `You changed ${what} — use Override & Validate to record it.`;
+    agreeBtn.title = 'Disabled because the controls no longer match the AI classification.';
+  } else {
+    agreeBtn.removeAttribute('title');
+  }
+}
+
+
+/* Put both controls back to what the model said, so a reviewer who changed
+   their mind can still agree without reloading the queue. */
+function resetToAi(issueId) {
+  const issue = allIssues.find(i => i.id === issueId);
+  if (!issue) return;
+
+  const catSelect = document.getElementById(`cat-${issueId}`);
+  if (catSelect) catSelect.value = issue.aiCategory;
+
+  document.querySelectorAll(`#priority-seg-${issueId} .priority-seg-btn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.priority === issue.aiPriorityLevel);
+  });
+
+  syncAgreeState(issueId);
+}
+
+
 /* ---------- Attach card event listeners ---------- */
 function attachCardListeners() {
   // Priority segmented buttons
@@ -363,7 +427,17 @@ function attachCardListeners() {
       const segmented = document.getElementById(`priority-seg-${issueId}`);
       segmented.querySelectorAll('.priority-seg-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      syncAgreeState(issueId);
     });
+  });
+
+  // Category select — same rule as the priority buttons above
+  document.querySelectorAll('.hitl-cat-select').forEach(sel => {
+    sel.addEventListener('change', () => syncAgreeState(sel.dataset.issue));
+  });
+
+  document.querySelectorAll('[data-action="reset"]').forEach(btn => {
+    btn.addEventListener('click', () => resetToAi(btn.dataset.issue));
   });
 
   // Action buttons
