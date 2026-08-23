@@ -7,7 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 ---
-<!-- deploy -->
+<!--deploy-->
 # Nepo Mall FIRS — Inference Service
 
 Serves the fine-tuned XLM-RoBERTa-large classifier used by the Nepo Mall
