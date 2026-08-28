@@ -26,25 +26,45 @@
       justify-content: center;
       padding: 48px;
       overflow: hidden;
+      /* What the right-edge fade dissolves INTO. Without this the page's dark
+         navy shows through the mask instead of the form panel's white. */
+      background: #ffffff;
     }
 
     .auth-hero::before {
       content: '';
       position: absolute;
       inset: 0;
-      background: url('img/mall-hero.png') center / cover no-repeat;
+      /* Scrim and photo composited on ONE layer so the mask fades both
+         together. Previously the white gradient was painted OVER the dark
+         scrim, so near the edge 0.86 white on 0.88 black resolved to grey and
+         then jumped to white at exactly 100% — that step was the visible seam.
+         Masking the composite instead means there is nothing to step from. */
+      background:
+        linear-gradient(180deg,
+            rgba(11, 17, 32, 0.3) 0%,
+            rgba(11, 17, 32, 0.55) 40%,
+            rgba(11, 17, 32, 0.88) 100%),
+        url('img/mall-hero.png') center / cover no-repeat;
+      -webkit-mask-image: linear-gradient(90deg,
+          rgba(0, 0, 0, 1) 46%,
+          rgba(0, 0, 0, 0.97) 60%,
+          rgba(0, 0, 0, 0.88) 71%,
+          rgba(0, 0, 0, 0.70) 80%,
+          rgba(0, 0, 0, 0.46) 88%,
+          rgba(0, 0, 0, 0.22) 94%,
+          rgba(0, 0, 0, 0.07) 98%,
+          rgba(0, 0, 0, 0) 100%);
+      mask-image: linear-gradient(90deg,
+          rgba(0, 0, 0, 1) 46%,
+          rgba(0, 0, 0, 0.97) 60%,
+          rgba(0, 0, 0, 0.88) 71%,
+          rgba(0, 0, 0, 0.70) 80%,
+          rgba(0, 0, 0, 0.46) 88%,
+          rgba(0, 0, 0, 0.22) 94%,
+          rgba(0, 0, 0, 0.07) 98%,
+          rgba(0, 0, 0, 0) 100%);
       z-index: 0;
-    }
-
-    .auth-hero::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg,
-          rgba(11, 17, 32, 0.3) 0%,
-          rgba(11, 17, 32, 0.55) 40%,
-          rgba(11, 17, 32, 0.88) 100%);
-      z-index: 1;
     }
 
     .hero-content {
@@ -473,6 +493,30 @@
     }
 
     /* ── Responsive ── */
+    /* Narrow desktops: the panel shrinks but the subtitle keeps wrapping to
+       the full content width, so it reaches further right as a PERCENTAGE.
+       At 1000px it ends around 86%, where the wide-screen mask has already
+       dropped the scrim to ~0.5 — and the subtitle is 60% white, so it washes
+       out. Hold the fade back until the text has finished. */
+    @media (max-width: 1200px) {
+      .auth-hero::before {
+        -webkit-mask-image: linear-gradient(90deg,
+            rgba(0, 0, 0, 1) 68%,
+            rgba(0, 0, 0, 0.90) 80%,
+            rgba(0, 0, 0, 0.70) 88%,
+            rgba(0, 0, 0, 0.42) 94%,
+            rgba(0, 0, 0, 0.15) 98%,
+            rgba(0, 0, 0, 0) 100%);
+        mask-image: linear-gradient(90deg,
+            rgba(0, 0, 0, 1) 68%,
+            rgba(0, 0, 0, 0.90) 80%,
+            rgba(0, 0, 0, 0.70) 88%,
+            rgba(0, 0, 0, 0.42) 94%,
+            rgba(0, 0, 0, 0.15) 98%,
+            rgba(0, 0, 0, 0) 100%);
+      }
+    }
+
     @media (max-width: 960px) {
       .auth-page {
         grid-template-columns: 1fr;
