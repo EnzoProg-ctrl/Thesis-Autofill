@@ -442,6 +442,24 @@
 }
 
 @media (max-width: 768px) {
+  /* The topbar is a fixed-height row with no wrapping, so on a phone the
+     controls in .topbar-right run past the right edge and are unreachable —
+     on Analytics that clipped the Export CSV button entirely. Letting the bar
+     grow to a second row keeps every control visible and tappable. Only
+     .topbar-right wraps, so pages whose controls already fit are unchanged. */
+  .admin-topbar {
+    height: auto;
+    min-height: var(--header-h);
+    flex-wrap: wrap;
+    row-gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .admin-topbar .topbar-right {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
   .admin-sidebar {
     transform: translateX(-100%);
   }
@@ -477,6 +495,26 @@
 }
 
 @media (max-width: 480px) {
+  /* At this width the segmented control and Export CSV still do not sit side
+     by side. Give each half the row so both stay full-width and legible
+     rather than shrinking the labels to nothing. */
+  .admin-topbar .topbar-right {
+    width: 100%;
+  }
+
+  .admin-topbar .segmented-control {
+    flex: 1 1 auto;
+  }
+
+  .admin-topbar .segmented-control .segmented-btn {
+    flex: 1 1 0;
+    padding: 8px 10px;
+  }
+
+  .admin-topbar .topbar-right > .btn {
+    flex: 0 0 auto;
+  }
+
   .kpi-grid {
     grid-template-columns: 1fr;
   }
