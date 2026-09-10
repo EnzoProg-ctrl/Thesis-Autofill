@@ -625,6 +625,29 @@
           return showError('Account creation did not complete. Please try again.');
         }
 
+        /* Already registered. With email confirmation on, Supabase does not
+           say so — it returns no error and a placeholder user with a null
+           session, so this path is indistinguishable from a real signup and
+           the tenant would be told to check an inbox that never receives
+           anything. The giveaway is an empty identities array, which is the
+           documented way to detect the obfuscated response.
+
+           Harmless without this check — no duplicate account or tenants row is
+           created either way — but the tenant is left waiting on a link that
+           does not exist.
+
+           Redundant if email enumeration protection is disabled in the
+           dashboard: signUp then returns a real error and the branch above
+           catches it first. Kept so registration behaves correctly under
+           either setting. */
+        if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          resetButton();
+          emailInput.classList.add('error');
+          emailInput.focus();
+          return showError('This email is already registered. Please sign in instead, '
+            + 'or use "Forgot password" if you cannot get in.');
+        }
+
         userId = data.user.id;
         userEmail = email;
 
