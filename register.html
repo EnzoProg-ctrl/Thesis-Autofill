@@ -496,6 +496,46 @@
       if (!finishSetupUser) {
         if (!email) return showError('Please enter an email address.');
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email address.');
+
+        /* Misspelled domains. A format check cannot catch these — gmai.com is
+           perfectly valid syntax, and it is a real registered domain, so mail
+           sent there simply disappears. These are the misspellings of common
+           providers; every one of them is a typo rather than a choice, so the
+           submit is blocked with a suggestion.
+
+           NOT an allowlist. Business domains are legitimate and unpredictable
+           — jollibee.com.ph is already a registered tenant here — so only
+           known-wrong spellings are rejected, never unknown ones.
+
+           This catches the domain. It cannot catch a misspelled mailbox, e.g.
+           juandelacruzz@gmail.com. Only the confirmation email proves that. */
+        const DOMAIN_TYPOS = {
+          'gmai.com': 'gmail.com',   'gmial.com': 'gmail.com',
+          'gmaill.com': 'gmail.com', 'gamil.com': 'gmail.com',
+          'gnail.com': 'gmail.com',  'gmaul.com': 'gmail.com',
+          'gmail.co': 'gmail.com',   'gmail.con': 'gmail.com',
+          'gmail.cm': 'gmail.com',   'gmail.comm': 'gmail.com',
+          'yaho.com': 'yahoo.com',   'yahooo.com': 'yahoo.com',
+          'yhaoo.com': 'yahoo.com',  'yahoo.co': 'yahoo.com',
+          'yahoo.con': 'yahoo.com',  'yahoo.cm': 'yahoo.com',
+          'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com',
+          'hotmall.com': 'hotmail.com', 'hotmail.co': 'hotmail.com',
+          'hotmail.con': 'hotmail.com',
+          'outlok.com': 'outlook.com',  'outllok.com': 'outlook.com',
+          'outook.com': 'outlook.com',  'outlook.co': 'outlook.com',
+          'iclod.com': 'icloud.com',    'iclound.com': 'icloud.com',
+          'icloud.co': 'icloud.com'
+        };
+
+        const domain = email.slice(email.lastIndexOf('@') + 1);
+        const suggestion = DOMAIN_TYPOS[domain];
+        if (suggestion) {
+          emailInput.classList.add('error');
+          emailInput.focus();
+          return showError('Did you mean ' + email.slice(0, email.lastIndexOf('@') + 1)
+            + suggestion + '? Please check your email address.');
+        }
+        emailInput.classList.remove('error');
         if (password.length < 8) return showError('Password must be at least 8 characters.');
         if (password !== confirm) return showError('Passwords do not match.');
 
@@ -524,18 +564,56 @@
          different questions and need two variables. */
       const wasFinishSetup = finishSetupUser !== null;
       let recoveryUser = finishSetupUser;
+      let needsConfirmation = false;
 
       let userId, userEmail;
+
+      /* Writing the store row from the browser only works while a session
+         exists. Kept for the finish-setup path, and as a fallback in case
+         migration_007's trigger has not been applied yet. */
+      const writeTenantRow = async (id, mail) =>
+        (await supabase.from('tenants').insert({
+          id: id,
+          store_name: storeName,
+          floor: floor,
+          contact_person: contact,
+          phone_number: phone,
+          email: mail,
+          privacy_consented_at: new Date().toISOString()
+        })).error;
 
       if (wasFinishSetup) {
         userId = finishSetupUser.id;
         // Normalised for the same reason the signUp path lowercases: tenants.email
         // carries a UNIQUE constraint and must not depend on how it was typed.
         userEmail = (finishSetupUser.email || '').trim().toLowerCase();
+
+        const insertError = await writeTenantRow(userId, userEmail);
+        if (insertError) {
+          resetButton();
+          return enterFinishSetupMode(recoveryUser,
+            'Saving your store details failed (' + insertError.message
+            + '). Press Complete Registration to try again.');
+        }
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: email,
-          password: password
+          password: password,
+          /* The store details travel WITH the signUp and are written to
+             public.tenants by the handle_new_tenant trigger (migration_007).
+             They are deliberately not inserted from here: once email
+             confirmation is enabled, signUp returns no session, the browser is
+             still anon, and the tenants_insert_self policy rejects the write.
+             Moving it into the database is what allows confirmation to be
+             turned on without breaking registration. */
+          options: {
+            data: {
+              store_name: storeName,
+              floor: floor,
+              contact_person: contact,
+              phone_number: phone
+            }
+          }
         });
 
         if (error) {
@@ -550,52 +628,41 @@
         userId = data.user.id;
         userEmail = email;
 
-        /* signUp returns a live session while email confirmation is off, and
-           that session is what makes the recovery below possible: if the
-           INSERT fails we are already authenticated as the new user and the
-           same button can simply retry it. */
-        if (data.session) recoveryUser = data.user;
-      }
+        /* No session means email confirmation is ON and the address has not
+           been proven yet. The trigger has already written the store row, so
+           there is nothing to retry — the tenant only has to click the link. */
+        needsConfirmation = !data.session;
 
-      const { error: insertError } = await supabase.from('tenants').insert({
-        id: userId,
-        store_name: storeName,
-        floor: floor,
-        contact_person: contact,
-        phone_number: phone,
-        email: userEmail,
-        privacy_consented_at: new Date().toISOString()
-      });
+        if (data.session) {
+          recoveryUser = data.user;
 
-      if (insertError) {
-        resetButton();
+          /* Confirm the trigger actually ran. If migration_007 has not been
+             applied, this catches it here instead of leaving the tenant with a
+             login and no store record — the exact failure this change exists
+             to prevent. */
+          const { data: row } = await supabase
+            .from('tenants').select('id').eq('id', userId).maybeSingle();
 
-        /* The login now exists and the store record does not. Do not leave the
-           tenant staring at a raw error with an address they can no longer
-           register: switch the page into finish-setup mode so the button
-           retries just the INSERT. With no session to retry against, tell them
-           how to come back instead. */
-        if (recoveryUser) {
-          enterFinishSetupMode(
-            recoveryUser,
-            'Your login was created, but saving your store details failed ('
-              + insertError.message + '). Press Complete Registration to try again.'
-          );
-        } else {
-          showError(
-            'Your login was created but your store details could not be saved ('
-              + insertError.message + '). Sign in with the same email and password '
-              + 'to finish setting up your store.'
-          );
+          if (!row) {
+            const insertError = await writeTenantRow(userId, userEmail);
+            if (insertError) {
+              resetButton();
+              return enterFinishSetupMode(recoveryUser,
+                'Your login was created, but saving your store details failed ('
+                + insertError.message + '). Press Complete Registration to try again.');
+            }
+          }
         }
-        return;
       }
 
       // Show success
       form.style.display = 'none';
       successText.textContent = wasFinishSetup
         ? 'Your store details have been saved. You can now sign in.'
-        : 'Your tenant account has been created. You can now sign in.';
+        : needsConfirmation
+          ? 'Your tenant account has been created. We sent a confirmation link to '
+            + userEmail + '. Please open it to activate your account, then sign in.'
+          : 'Your tenant account has been created. You can now sign in.';
       authError.classList.remove('show');
       authSuccess.classList.add('show');
       resetButton();
