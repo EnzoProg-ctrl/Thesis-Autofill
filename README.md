@@ -91,6 +91,12 @@ set the priority.
 The model is accurate but no model is certain on any single report. This rule is a
 guarantee the model cannot provide on its own.
 
+Administrators manage the term list on the **Safety Terms** page — add a term, turn one
+off, or delete it — and see how many past reports it would have matched before saving.
+Terms are stored in Supabase; both the inference service and the browser fall back to a
+built-in list if the table cannot be read, and the database refuses to switch off the
+last active danger term.
+
 ---
 
 ## Repository layout
@@ -99,7 +105,7 @@ guarantee the model cannot provide on its own.
 |---|---|
 | `index.html`, `register.html`, `reset-password.html` | Authentication pages |
 | `tenant/` | Tenant reporting interface |
-| `admin/` | Dashboard, HITL review queue, analytics, work queue |
+| `admin/` | Dashboard, HITL review queue, safety terms, analytics, work queue |
 | `js/` | ES modules — data access, classification client, dashboards |
 | `css/` | Design system and per-area stylesheets |
 | `supabase/` | Schema, RLS policies, functions, migrations |
@@ -110,6 +116,7 @@ Key modules:
 
 - `js/bert-api.js` — calls the inference service, falls back to the keyword scorer
 - `js/keyword-classifier.js` — the fallback, used only when inference is unreachable
+- `js/safety-floor.js` — safety-floor matching and the built-in term list
 - `js/hitl.js` — review queue; preserves the pre-override prediction
 - `js/shared.js` — data access and shared UI
 - `serving/serve.py` — inference endpoint, temperature scaling, safety floor
@@ -130,6 +137,7 @@ supabase/migration_004_tenant_issue_guard.sql
 supabase/migration_005_tenant_text_edits.sql
 supabase/migration_006_resolved_at.sql
 supabase/migration_007_tenant_signup_trigger.sql
+supabase/migration_008_safety_terms.sql
 ```
 
 Then enable **Authentication → Sign In / Providers → Email → Confirm email**, and set

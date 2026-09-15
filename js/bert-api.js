@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { analyzeText as analyzeTextKeyword, scorePriority, detectLanguage } from './keyword-classifier.js';
+import { BUILTIN_COMPILED, compileSafetyTerms, matchSafetyTerms } from './safety-floor.js';
 
 /* Inference service (RobertaTraining/serve.py).
 
@@ -84,8 +85,10 @@ export const UNSUPPORTED_CATEGORY_IDS = [];
    negation, so "wala pang usok" ("no smoke yet") trips it. That is the correct
    trade.
 
-   MIRRORED FROM RobertaTraining/serve.py — the two lists must stay identical.
-   RobertaTraining/test_safety_floor.py parses both files and fails on drift.
+   The terms are managed by admins on admin/terms.html and stored in
+   public.safety_terms (migration_008). Matching lives in safety-floor.js,
+   which also holds the built-in list used whenever the table cannot be read.
+   serving/serve.py mirrors both the matching rules and the built-in list.
    ============================================================ */
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, critical: 3 };
@@ -97,47 +100,63 @@ const SAFETY_FLOOR_LEVEL = 'high';
    confidence the floor has not earned. */
 const SAFETY_FLOOR_SCORE = 60;
 
-/* Tagalog infixes and reduplicates around the stem — "usok" becomes
-   "umuusok", "sunog" becomes "nasusunog" — so a word-boundary match would miss
-   exactly the phrasings tenants actually write. Matched as SUBSTRINGS. */
-const DANGER_SUBSTRINGS = [
-  'sunog',        // sunog, nasusunog, nasunog, sinusunog, AMOY SUNOG
-  'usok',         // usok, umuusok, mausok, inuusukan
-  'apoy',         // apoy, umaapoy, nag-aapoy — added 2026-08-13, see below
-  'nakuryente',   // nakuryente, na-kuryente, nakuryenteng
-  'nakoryente',   // the same word as spelled by half the corpus
-  'naipit',       // naipit, na-ipit
-  'naiipit',      // naiipit, nai-ipit — not a substring of "naipit"
-];
+/* Which terms are in force. Starts as the built-in list, so the floor works
+   from the first keystroke and under node (the drift test); replaced by the
+   admin-managed list once it loads. The term notes that used to live here —
+   why "apoy" was added, why bare "kuryente" and "fire" are absent — now sit
+   on the rows themselves and in safety-floor.js. */
+let activeTerms = BUILTIN_COMPILED;
+let termsSource = 'builtin';
+let termsLoad = null;
 
-/* "apoy" (flame) was added after the 7-class evaluation surfaced the only
-   genuine severe underestimate in the test set — "May apoy na maliit na
-   lumalabas pag sinasaksak namin ung kettle" (a small flame comes out when we
-   plug in our kettle), true High, predicted Low. It is the Tagalog noun and
-   carries none of the ambiguity that kept English "fire" out of this list:
-   there is no apoy equivalent of "fire exit" or "fire drill". Verified across
-   the corpus first — 46 rows, all Electrical, none Low or Medium. */
+/* A slow database must not hold up a report any more than a slow model may.
+   If the list has not arrived in this long, the report is floored with
+   whatever is already in force — the built-in list at worst. */
+const TERMS_WAIT_MS = 2500;
 
-/* Bare "kuryente" is deliberately absent: it just means "electricity", and
-   "walang kuryente" (no power) is an ordinary Medium report. Only the na-
-   form, meaning a person was shocked, is a danger word. "fire" is absent for
-   the same reason — "fire exit", "fire drill" and "fire extinguisher" are
-   routine Fire Safety vocabulary. */
+/**
+ * Fetch the admin-managed terms once per page. Never throws: on any failure,
+ * or if the table returns no danger term, the built-in list stays in force.
+ * @returns {Promise<string>} 'database' | 'builtin'
+ */
+export function loadSafetyTerms() {
+  if (termsLoad) return termsLoad;
+  termsLoad = (async () => {
+    /* Browser only. supabase-client.js throws at import time without the CDN
+       script, so it is imported lazily rather than at the top of this file —
+       a static import would break every page and test that loads bert-api.js
+       without Supabase. */
+    if (typeof window === 'undefined' || !window.supabase) return termsSource;
+    try {
+      const { supabase } = await import('./supabase-client.js');
+      const { data, error } = await supabase.rpc('get_safety_terms');
+      if (error) throw error;
+      const compiled = compileSafetyTerms(data);
+      if (!compiled) throw new Error('no active danger terms returned');
+      activeTerms = compiled;
+      termsSource = 'database';
+    } catch (err) {
+      console.warn('[bert-api] safety terms unavailable, using built-in list:', err.message);
+    }
+    return termsSource;
+  })();
+  return termsLoad;
+}
 
-/* English terms, matched at word boundaries so "sparkling" does not fire. */
-const DANGER_WORDS = [
-  ['trapped', /\btrapped\b/],
-  ['smoke', /\bsmok(?:e|es|ing|y)\b/],
-  ['sparks', /\bspark(?:s|ed|ing)?\b/],
-];
+/** Where the terms in force came from, for status displays. */
+export function safetyTermsSource() {
+  return termsSource;
+}
 
-/* Device names, not events. "Please test our smoke detector" is a scheduled
-   compliance chore, not a fire; flooring it to High would push routine work
-   into the emergency queue and train staff to ignore the flag. Blanked out
-   BEFORE matching, so "the smoke detector is going off and the corridor is
-   full of smoke" still trips on the second "smoke". */
-const NOT_DANGER_RE =
-  /\bsmoke[\s-]?(?:detector|detectors|alarm|alarms|sensor|sensors)\b|\bno[\s-]smoking\b|\bsmoking[\s-]area\b|\bsmoke[\s-]free\b/g;
+function waitForSafetyTerms() {
+  let timer;
+  return Promise.race([
+    loadSafetyTerms(),
+    new Promise((resolve) => { timer = setTimeout(resolve, TERMS_WAIT_MS); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+if (typeof window !== 'undefined') loadSafetyTerms();
 
 
 /**
@@ -146,19 +165,7 @@ const NOT_DANGER_RE =
  * @returns {string[]}
  */
 export function safetyFloorTerms(text) {
-  const haystack = String(text).toLowerCase().replace(NOT_DANGER_RE, ' ');
-  /* Taglish writes the same word with and without a hyphen ("na-kuryente").
-     Only the substring pass gets the de-hyphenated form: stripping hyphens
-     would DESTROY a word-boundary match, turning "nag-spark" into
-     "nagspark". */
-  const dehyphenated = haystack.replace(/-/g, '');
-
-  const hits = DANGER_SUBSTRINGS.filter(
-    (t) => haystack.includes(t) || dehyphenated.includes(t));
-  for (const [name, re] of DANGER_WORDS) {
-    if (re.test(haystack)) hits.push(name);
-  }
-  return hits;
+  return matchSafetyTerms(text, activeTerms);
 }
 
 
@@ -212,6 +219,7 @@ export function applySafetyFloor(text, priorityScore, priorityLevel) {
  *                              language, reasoning, keywords, allScores, source }
  */
 export async function analyzeText(text, userCategory = '', selfAssessment = 'medium') {
+  await waitForSafetyTerms();
   let prediction;
   try {
     prediction = await callInferenceService(text, userCategory);

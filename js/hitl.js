@@ -687,5 +687,8 @@ function applyRBAC() {
 
     const analyticsLink = document.querySelector('a[href="analytics.html"]');
     if (analyticsLink) analyticsLink.classList.add('hidden');
+
+    const termsLink = document.getElementById('terms-link');
+    if (termsLink) termsLink.classList.add('hidden');
   }
 }

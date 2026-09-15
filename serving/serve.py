@@ -55,7 +55,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 import time
+import urllib.request
 from pathlib import Path
 
 import torch
@@ -144,8 +146,12 @@ PRIORITY_RANK = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
 # someone their life. It therefore does NOT parse negation. "wala pang usok"
 # ("no smoke yet") will trip it, and that is the correct trade.
 #
-# MIRRORED IN js/bert-api.js — the two lists must stay identical. Run
-# test_safety_floor.py, which parses both files and fails if they drift.
+# The terms are managed by admins (admin/terms.html) and stored in the
+# Supabase table public.safety_terms (migration_008). This service reads them
+# through get_safety_terms() at startup and every SAFETY_TERMS_REFRESH_S after,
+# and keeps _BUILTIN_SAFETY_TERMS in force whenever the table cannot be read.
+#
+# MIRRORED IN js/safety-floor.js — same built-in rows, same matching rules.
 
 SAFETY_FLOOR_LABEL = "High"
 # The bottom of the app's High band (js/keyword-classifier.js scorePriority:
@@ -154,72 +160,152 @@ SAFETY_FLOOR_LABEL = "High"
 # would assert a confidence the floor has not earned.
 SAFETY_FLOOR_SCORE = 60
 
-# Tagalog infixes and reduplicates around the stem — "usok" becomes "umuusok",
-# "sunog" becomes "nasusunog" — so a word-boundary match would miss exactly the
-# phrasings tenants actually write. These are matched as SUBSTRINGS.
-_DANGER_SUBSTRINGS = (
-    "sunog",       # sunog, nasusunog, nasunog, sinusunog, AMOY SUNOG
-    "usok",        # usok, umuusok, mausok, inuusukan
-    "apoy",        # apoy, umaapoy, nag-aapoy — added 2026-08-13, see below
-    "nakuryente",  # nakuryente, na-kuryente, nakuryenteng
-    "nakoryente",  # the same word as spelled by half the corpus
-    "naipit",      # naipit, na-ipit
-    "naiipit",     # naiipit, nai-ipit — not a substring of "naipit"
-)
-
-# "apoy" (flame) was added after the 7-class evaluation surfaced the only
-# genuine severe underestimate in the test set:
+# One row per matched string, in the shape get_safety_terms() returns:
+#   (kind, match_type, term, label, sort_order)
 #
-#   "May apoy na maliit na lumalabas pag sinasaksak namin ung kettle"
-#   ("a small flame comes out when we plug in our kettle")  true High, predicted Low
+# Tagalog stems are SUBSTRINGS — infixes and reduplication wrap the root, so
+# "usok" must also match "umuusok". English terms are WHOLE WORDS, so "spark"
+# does not fire on "sparkling"; their inflections are separate rows sharing a
+# label. Exclusions are device names and signage, blanked BEFORE matching, so
+# "the smoke detector is going off and the hall is full of smoke" still trips
+# on the second "smoke".
 #
-# It is the Tagalog noun and carries none of the ambiguity that kept English
-# "fire" out of this list — there is no apoy equivalent of "fire exit" or
-# "fire drill". Verified across the corpus before adding: 46 rows contain it,
-# all Electrical, 43 Critical and 3 High, none Low or Medium, and the only word
-# containing the substring is "apoy" itself.
-
-# NOTE: bare "kuryente" is deliberately absent. It just means "electricity",
-# and "walang kuryente" (no power) is an ordinary Medium report. Only the
-# na- form, which means a person was shocked, is a danger word. "fire" is
-# absent for the same reason: "fire exit", "fire drill" and "fire
-# extinguisher" are routine Fire Safety vocabulary, and the corpus is full of
-# non-urgent reports containing them.
-
-# English terms, matched at word boundaries. "\bspark\b" will not fire on
-# "sparkling", which substring matching would.
-_DANGER_WORDS = (
-    ("trapped", r"trapped"),
-    ("smoke", r"smok(?:e|es|ing|y)"),
-    ("sparks", r"spark(?:s|ed|ing)?"),
+# "apoy" was added 2026-08-13 after the only genuine severe underestimate in
+# the test set ("May apoy na maliit na lumalabas pag sinasaksak namin ung
+# kettle", true High, predicted Low); 46 corpus rows contain it, none Low or
+# Medium. Bare "kuryente" (electricity) and English "fire" (fire exit, fire
+# drill) are deliberately absent.
+_BUILTIN_SAFETY_TERMS = (
+    ("danger", "substring", "sunog", "sunog", 10),
+    ("danger", "substring", "usok", "usok", 20),
+    ("danger", "substring", "apoy", "apoy", 30),
+    ("danger", "substring", "nakuryente", "nakuryente", 40),
+    ("danger", "substring", "nakoryente", "nakoryente", 50),
+    ("danger", "substring", "naipit", "naipit", 60),
+    ("danger", "substring", "naiipit", "naiipit", 70),
+    ("danger", "word", "trapped", "trapped", 110),
+    ("danger", "word", "smoke", "smoke", 120),
+    ("danger", "word", "smokes", "smoke", 121),
+    ("danger", "word", "smoking", "smoke", 122),
+    ("danger", "word", "smoky", "smoke", 123),
+    ("danger", "word", "spark", "sparks", 130),
+    ("danger", "word", "sparks", "sparks", 131),
+    ("danger", "word", "sparked", "sparks", 132),
+    ("danger", "word", "sparking", "sparks", 133),
+    ("exclusion", "phrase", "smoke detector", "smoke detector", 210),
+    ("exclusion", "phrase", "smoke detectors", "smoke detector", 211),
+    ("exclusion", "phrase", "smoke alarm", "smoke alarm", 220),
+    ("exclusion", "phrase", "smoke alarms", "smoke alarm", 221),
+    ("exclusion", "phrase", "smoke sensor", "smoke sensor", 230),
+    ("exclusion", "phrase", "smoke sensors", "smoke sensor", 231),
+    ("exclusion", "phrase", "no smoking", "no smoking", 240),
+    ("exclusion", "phrase", "smoking area", "smoking area", 250),
+    ("exclusion", "phrase", "smoke free", "smoke free", 260),
 )
-_DANGER_WORD_RES = tuple(
-    (name, re.compile(rf"\b{pattern}\b")) for name, pattern in _DANGER_WORDS
-)
 
-# Device names, not events. "Please test our smoke detector" is a scheduled
-# Fire Safety chore, not a fire, and flooring it to High would push routine
-# compliance work into the emergency queue and train staff to ignore the flag.
-# These are blanked out BEFORE matching, so "the smoke detector is going off
-# and the corridor is full of smoke" still trips on the second "smoke".
-_NOT_DANGER_RE = re.compile(
-    r"\bsmoke[\s-]?(?:detector|detectors|alarm|alarms|sensor|sensors)\b"
-    r"|\bno[\s-]smoking\b"
-    r"|\bsmoking[\s-]area\b"
-    r"|\bsmoke[\s-]free\b"
+# Explicit lookarounds rather than \b, over the same character class
+# js/safety-floor.js uses — JavaScript's \b is ASCII-only and Python's is
+# Unicode-aware, so \b would let the two disagree on text containing ñ.
+_WORD_CHAR = "a-z0-9_ñ"
+_BEFORE = rf"(?<![{_WORD_CHAR}])"
+_AFTER = rf"(?![{_WORD_CHAR}])"
+
+
+def _term_order(row) -> tuple:
+    return (row[4] if row[4] is not None else 500, row[2])
+
+
+def _compile_terms(rows) -> dict | None:
+    """Build a matcher from term rows. None when there is no danger term, so
+    the caller keeps its current list rather than switching the floor off."""
+    clean = [r for r in rows if r[2] and r[3]]
+    danger = sorted((r for r in clean if r[0] == "danger"), key=_term_order)
+    if not danger:
+        return None
+
+    def group(match_type: str) -> list[tuple[str, list[str]]]:
+        groups: dict[str, list[str]] = {}
+        for _, mt, term, label, _ in danger:
+            if mt == match_type:
+                groups.setdefault(label, []).append(term.lower())
+        return list(groups.items())
+
+    words = [(label, re.compile(_BEFORE + "(?:" + "|".join(map(re.escape, terms)) + ")" + _AFTER))
+             for label, terms in group("word")]
+    exclusions = sorted((r for r in clean if r[0] == "exclusion" and r[1] == "phrase"), key=_term_order)
+    phrases = [r"[\s-]?".join(map(re.escape, re.split(r"[ -]+", r[2].lower()))) for r in exclusions]
+    return {
+        "substrings": group("substring"),
+        "words": words,
+        "exclusion": re.compile(_BEFORE + "(?:" + "|".join(phrases) + ")" + _AFTER) if phrases else None,
+        "danger_count": len(danger),
+        "exclusion_count": len(phrases),
+    }
+
+
+_BUILTIN_COMPILED = _compile_terms(_BUILTIN_SAFETY_TERMS)
+
+# Replaced as one reference, so a request never sees half a list.
+_safety_terms: dict = {"compiled": _BUILTIN_COMPILED, "source": "builtin",
+                       "loaded_at": None, "error": None}
+
+# The same public project URL and anon key the web app already ships to every
+# browser (js/supabase-client.js). The anon key grants nothing beyond what RLS
+# allows, and get_safety_terms() is the only thing this service calls with it.
+SUPABASE_URL = os.environ.get("FIRS_SUPABASE_URL", "https://ljlxyfznsobfgalablqe.supabase.co")
+SUPABASE_ANON_KEY = os.environ.get(
+    "FIRS_SUPABASE_ANON_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqbHh5Znpuc29iZmdhbGFibHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODUxMTIsImV4cCI6MjA5ODY2MTExMn0.9arQevnafCN4rSk1zIM8KyZM1_Ye6_sdStlmAYUtLa0",
 )
+SAFETY_TERMS_REFRESH_S = int(os.environ.get("FIRS_SAFETY_TERMS_REFRESH_S", "300"))
+
+
+def refresh_safety_terms() -> str:
+    """Fetch the admin-managed list. Never raises: on any failure, or if the
+    table returns no danger term, the list already in force stays."""
+    try:
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/rpc/get_safety_terms",
+            data=b"{}", method="POST",
+            headers={"apikey": SUPABASE_ANON_KEY,
+                     "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+                     "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as res:
+            data = json.loads(res.read().decode("utf-8"))
+        rows = [(d.get("kind"), d.get("match_type"), d.get("term"), d.get("label"), d.get("sort_order"))
+                for d in data]
+        compiled = _compile_terms(rows)
+        if compiled is None:
+            raise ValueError("no active danger terms returned")
+        _safety_terms.update(compiled=compiled, source="database", error=None,
+                             loaded_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    except Exception as exc:  # noqa: BLE001 — any failure keeps the current list
+        _safety_terms["error"] = f"{type(exc).__name__}: {exc}"
+        print(f"[serve] safety terms not refreshed, keeping {_safety_terms['source']} list: {exc}")
+    return _safety_terms["source"]
+
+
+def _refresh_safety_terms_forever() -> None:
+    while True:
+        time.sleep(SAFETY_TERMS_REFRESH_S)
+        refresh_safety_terms()
 
 
 def safety_floor_terms(text: str) -> list[str]:
     """Danger terms present in `text`, in a stable order. Empty if none."""
-    haystack = _NOT_DANGER_RE.sub(" ", text.lower())
+    compiled = _safety_terms["compiled"]
+    haystack = text.lower()
+    if compiled["exclusion"] is not None:
+        haystack = compiled["exclusion"].sub(" ", haystack)
     # Taglish writes the same word with and without a hyphen ("na-kuryente").
     # Only the substring pass gets the de-hyphenated form: stripping hyphens
-    # would DESTROY a word-boundary match, turning "nag-spark" into "nagspark".
+    # would DESTROY a whole-word match, turning "nag-spark" into "nagspark".
     dehyphenated = haystack.replace("-", "")
 
-    hits = [t for t in _DANGER_SUBSTRINGS if t in haystack or t in dehyphenated]
-    hits += [name for name, rx in _DANGER_WORD_RES if rx.search(haystack)]
+    hits = [label for label, terms in compiled["substrings"]
+            if any(t in haystack or t in dehyphenated for t in terms)]
+    hits += [label for label, rx in compiled["words"]
+             if label not in hits and rx.search(haystack)]
     return hits
 
 
@@ -302,6 +388,10 @@ class ClassifyRequest(BaseModel):
 @app.on_event("startup")
 def load_model() -> None:
     """Load the checkpoint once. A per-request load would cost ~20 s each."""
+    # Terms first and briefly: a failed fetch leaves the built-in list, and the
+    # background thread keeps retrying, so the model load is never held up.
+    refresh_safety_terms()
+    threading.Thread(target=_refresh_safety_terms_forever, daemon=True).start()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, tokenizer, label_map = load_checkpoint(MODEL_DIR, device)
     meta = json.loads((MODEL_DIR / "meta.json").read_text(encoding="utf-8"))
@@ -342,6 +432,13 @@ def health() -> dict:
         "num_labels": len(_state["label_map"]),
         "category_temperature": CATEGORY_TEMPERATURE,
         "priority_temperature": PRIORITY_TEMPERATURE,
+        "safety_terms": {
+            "source": _safety_terms["source"],          # "database" | "builtin"
+            "danger_terms": _safety_terms["compiled"]["danger_count"],
+            "exclusion_phrases": _safety_terms["compiled"]["exclusion_count"],
+            "loaded_at": _safety_terms["loaded_at"],
+            "last_error": _safety_terms["error"],
+        },
     }
 
 
