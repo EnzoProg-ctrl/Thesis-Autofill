@@ -6,7 +6,7 @@ import { supabase } from './supabase-client.js';
 import { checkAuth } from './auth-guard.js';
 import { CATEGORIES, STATUS_LIST, getCategoryLabel } from './app-data.js';
 import { loadIssues, initSidebarToggle, showToast, resolutionHoursFor, mean, formatHours, aiAgreement,
-         openCreateUserModal, openEditAdminProfileModal } from './shared.js';
+         openCreateUserModal, openEditAdminProfileModal, escapeHtml, localDateKey } from './shared.js';
 
 /* ---------- Auth Guard ---------- */
 if (!(await checkAuth(['admin', 'staff']))) {
@@ -906,6 +906,247 @@ async function updateHITLBadge(allIssues) {
   }
 }
 
+/* ---------- Summary per Date ----------
+
+   One row per calendar day that received reports: how many, how they split by
+   priority, the most common category, and how many of that day's reports are
+   still open. Clicking a day lists its reports.
+
+   Independent of the Weekly / Monthly toggle. That toggle only covers the
+   CURRENT week or month, so a past date could never be reached through it;
+   this card carries its own From / To range instead.
+
+   Days are bucketed with localDateKey(), in the viewer's timezone rather than
+   UTC. The UTC date would file a report submitted at 7am in Manila under the
+   previous day. */
+
+const DAILY_DEFAULT_SPAN_DAYS = 30;
+const PRIORITY_ORDER = ['critical', 'high', 'medium', 'low'];
+
+let dailyRange = null;            // { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' }
+const expandedDays = new Set();   // kept across re-renders, so the 30s refresh does not collapse an open day
+
+function shiftDateKey(key, days) {
+  const [y, m, d] = key.split('-').map(Number);
+  return localDateKey(new Date(y, m - 1, d + days));
+}
+
+/* Parsed as a LOCAL date. new Date('2026-08-24') is read as UTC midnight and
+   would render as the 23rd for anyone west of Greenwich. */
+function dateFromKey(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDayLabel(key) {
+  return dateFromKey(key).toLocaleDateString('en-PH', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+function daysInclusive(fromKey, toKey) {
+  return Math.round((dateFromKey(toKey) - dateFromKey(fromKey)) / 86400000) + 1;
+}
+
+function countCell(n, extraClass = '') {
+  return n === 0
+    ? '<td class="num day-zero">0</td>'
+    : `<td class="num ${extraClass}">${n}</td>`;
+}
+
+function summariseDay(dayIssues) {
+  const byPriority = { critical: 0, high: 0, medium: 0, low: 0 };
+  const byCategory = {};
+  let open = 0;
+  for (const issue of dayIssues) {
+    if (byPriority[issue.aiPriorityLevel] !== undefined) byPriority[issue.aiPriorityLevel]++;
+    const cat = issue.aiCategory || 'other';
+    byCategory[cat] = (byCategory[cat] || 0) + 1;
+    if (issue.status !== 'resolved') open++;
+  }
+  /* Most frequent category. Ties are broken alphabetically so the same data
+     always shows the same answer, not whichever report happened to load first. */
+  const ranked = Object.entries(byCategory).sort((a, b) =>
+    b[1] - a[1] || getCategoryLabel(a[0]).localeCompare(getCategoryLabel(b[0])));
+  return { byPriority, ranked, open };
+}
+
+function renderDayDetail(dayIssues) {
+  const sorted = [...dayIssues].sort((a, b) =>
+    PRIORITY_ORDER.indexOf(a.aiPriorityLevel) - PRIORITY_ORDER.indexOf(b.aiPriorityLevel)
+    || new Date(a.submittedAt) - new Date(b.submittedAt));
+
+  const items = sorted.map(issue => {
+    const level = PRIORITY_ORDER.includes(issue.aiPriorityLevel) ? issue.aiPriorityLevel : '';
+    const levelLabel = level ? level.charAt(0).toUpperCase() + level.slice(1) : 'Unscored';
+    const status = STATUS_LIST.find(st => st.id === issue.status);
+    const time = new Date(issue.submittedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+    return `
+      <li class="day-detail-item">
+        <span class="day-detail-id">${escapeHtml(issue.ticketNumber || String(issue.id).slice(0, 8))}</span>
+        <span class="priority-badge ${level}"><span class="priority-dot ${level}"></span> ${escapeHtml(levelLabel)}</span>
+        <span class="day-detail-text">${escapeHtml(issue.text || '')}
+          <small>${escapeHtml(issue.storeName || 'Unknown store')} · ${escapeHtml(getCategoryLabel(issue.aiCategory))} · ${escapeHtml(time)}</small>
+        </span>
+        <span>${escapeHtml(status ? status.label : (issue.status || ''))}</span>
+      </li>`;
+  }).join('');
+
+  return `<ul class="day-detail-list">${items}</ul>`;
+}
+
+function renderDailySummary(allIssues) {
+  const body = document.getElementById('dailySummaryBody');
+  const foot = document.getElementById('dailySummaryFoot');
+  const wrap = document.getElementById('dailySummaryTableWrap');
+  const empty = document.getElementById('dailySummaryEmpty');
+  const label = document.getElementById('dailySummaryRangeLabel');
+  if (!body || !foot || !wrap || !empty || !label || !dailyRange) return;
+
+  const { from, to } = dailyRange;
+
+  const groups = new Map();
+  for (const issue of allIssues || []) {
+    const key = localDateKey(issue.submittedAt);
+    if (!key || key < from || key > to) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(issue);
+  }
+
+  const totalDays = daysInclusive(from, to);
+  const days = [...groups.keys()].sort().reverse();   // newest first
+
+  if (days.length === 0) {
+    wrap.hidden = true;
+    empty.hidden = false;
+    label.textContent = 'Reports submitted each day';
+
+    const latest = (allIssues || [])
+      .map(i => localDateKey(i.submittedAt))
+      .filter(Boolean)
+      .sort()
+      .pop();
+
+    empty.innerHTML = `
+      <div>No reports were submitted between ${escapeHtml(formatDayLabel(from))} and ${escapeHtml(formatDayLabel(to))}.</div>
+      ${latest ? `<button type="button" class="btn btn-secondary btn-sm" id="dailyJumpLatest">Show the ${DAILY_DEFAULT_SPAN_DAYS} days up to the latest report (${escapeHtml(formatDayLabel(latest))})</button>` : ''}`;
+
+    const jump = document.getElementById('dailyJumpLatest');
+    if (jump) {
+      jump.addEventListener('click', () => {
+        setDailyRange(shiftDateKey(latest, -(DAILY_DEFAULT_SPAN_DAYS - 1)), latest);
+        renderDailySummary(allIssues);
+      });
+    }
+    return;
+  }
+
+  wrap.hidden = false;
+  empty.hidden = true;
+  label.textContent = `${days.length} of ${totalDays} day${totalDays === 1 ? '' : 's'} had reports`;
+
+  const totals = { reports: 0, critical: 0, high: 0, medium: 0, low: 0, open: 0 };
+
+  body.innerHTML = days.map(key => {
+    const dayIssues = groups.get(key);
+    const { byPriority, ranked, open } = summariseDay(dayIssues);
+
+    totals.reports += dayIssues.length;
+    totals.open += open;
+    PRIORITY_ORDER.forEach(p => { totals[p] += byPriority[p]; });
+
+    const [topCat, topCount] = ranked[0];
+    const breakdown = ranked.map(([c, n]) => `${getCategoryLabel(c)}: ${n}`).join(', ');
+    const isOpen = expandedDays.has(key);
+
+    return `
+      <tr class="day-row" data-day="${key}" tabindex="0" aria-expanded="${isOpen}">
+        <td><span class="day-date"><span class="day-chevron" aria-hidden="true">›</span>${escapeHtml(formatDayLabel(key))}</span></td>
+        <td class="num day-count-total">${dayIssues.length}</td>
+        ${countCell(byPriority.critical, 'day-count-critical')}
+        ${countCell(byPriority.high, 'day-count-high')}
+        ${countCell(byPriority.medium)}
+        ${countCell(byPriority.low)}
+        <td class="day-top-category" title="${escapeHtml(breakdown)}">${escapeHtml(getCategoryLabel(topCat))} <small>(${topCount})</small></td>
+        ${countCell(open, 'day-open-some')}
+      </tr>
+      <tr class="day-detail" data-detail-for="${key}"${isOpen ? '' : ' hidden'}>
+        <td colspan="8">${isOpen ? renderDayDetail(dayIssues) : ''}</td>
+      </tr>`;
+  }).join('');
+
+  foot.innerHTML = `
+    <tr>
+      <td>Total · ${days.length} day${days.length === 1 ? '' : 's'}</td>
+      <td class="num">${totals.reports}</td>
+      <td class="num">${totals.critical}</td>
+      <td class="num">${totals.high}</td>
+      <td class="num">${totals.medium}</td>
+      <td class="num">${totals.low}</td>
+      <td></td>
+      <td class="num">${totals.open}</td>
+    </tr>`;
+
+  const toggle = (row) => {
+    const key = row.dataset.day;
+    const detail = body.querySelector(`tr[data-detail-for="${key}"]`);
+    if (!detail) return;
+    const opening = row.getAttribute('aria-expanded') !== 'true';
+    row.setAttribute('aria-expanded', String(opening));
+    if (opening) {
+      expandedDays.add(key);
+      /* Built on first open only. A month of days should not render every
+         report up front just to keep them hidden. */
+      detail.firstElementChild.innerHTML = renderDayDetail(groups.get(key));
+      detail.hidden = false;
+    } else {
+      expandedDays.delete(key);
+      detail.hidden = true;
+    }
+  };
+
+  body.querySelectorAll('tr.day-row').forEach(row => {
+    row.addEventListener('click', () => toggle(row));
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(row); }
+    });
+  });
+}
+
+function setDailyRange(from, to) {
+  dailyRange = { from, to };
+  const fromEl = document.getElementById('dailyFrom');
+  const toEl = document.getElementById('dailyTo');
+  if (fromEl) fromEl.value = from;
+  if (toEl) toEl.value = to;
+}
+
+function initDailySummary() {
+  const fromEl = document.getElementById('dailyFrom');
+  const toEl = document.getElementById('dailyTo');
+  if (!fromEl || !toEl) return;
+
+  const today = localDateKey();
+  setDailyRange(shiftDateKey(today, -(DAILY_DEFAULT_SPAN_DAYS - 1)), today);
+
+  const onChange = (changed) => {
+    let from = fromEl.value;
+    let to = toEl.value;
+    if (!from || !to) return;   // a half-cleared input is mid-edit, not a request
+    /* Keep the range valid by moving the OTHER end, so the date the admin
+       just picked is the one that sticks. */
+    if (from > to) {
+      if (changed === 'from') to = from; else from = to;
+    }
+    setDailyRange(from, to);
+    // Re-renders from the data already on the page. No refetch per change.
+    if (lastRender) renderDailySummary(lastRender.allIssues);
+  };
+
+  fromEl.addEventListener('change', () => onChange('from'));
+  toEl.addEventListener('change', () => onChange('to'));
+}
+
 /* ---------- Render Everything ---------- */
 
 async function renderAll() {
@@ -940,6 +1181,14 @@ async function renderAll() {
 
   // Update HITL badge with same data (avoids extra fetch)
   await updateHITLBadge(allIssues);
+
+  /* Last, and isolated: a fault in the per-date table must not take down the
+     charts and KPIs above it, which were working before it existed. */
+  try {
+    renderDailySummary(allIssues);
+  } catch (err) {
+    console.error('Summary per date failed to render:', err);
+  }
 }
 
 /* ---------- Time Range Selector ---------- */
@@ -1148,6 +1397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initTimeRange();
   initExportButtons();
+  initDailySummary();
   initSidebarToggle();
   await renderAll();
 });

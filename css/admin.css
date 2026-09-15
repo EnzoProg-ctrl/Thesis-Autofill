@@ -429,6 +429,225 @@
   margin-bottom: var(--sp-4);
 }
 
+/* ---------- Summary per Date ---------- */
+.daily-summary {
+  margin-bottom: var(--sp-6);
+  padding: 0;
+  overflow: hidden;
+}
+
+.daily-summary-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+}
+
+.daily-summary .daily-summary-header h4 {
+  margin-bottom: 2px;
+}
+
+.daily-summary-sub {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+}
+
+.daily-summary-controls {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.daily-summary-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--gray-500);
+}
+
+.daily-summary-field .form-input {
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  min-width: 150px;
+}
+
+.daily-summary-table-wrap {
+  overflow-x: auto;
+  border-top: 1px solid var(--gray-200);
+}
+
+.daily-summary-table {
+  min-width: 760px;
+}
+
+/* .data-table headers are sortable elsewhere and carry a pointer cursor;
+   this table is not sortable, so the header should not pretend to be. */
+.daily-summary-table th {
+  cursor: default;
+}
+
+.daily-summary-table th.num,
+.daily-summary-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  width: 88px;
+}
+
+.daily-summary-table td {
+  vertical-align: middle;
+}
+
+/* The cell colour rules below are scoped to td on purpose. `.data-table td`
+   sets a grey text colour and outranks a bare class selector, which silently
+   turned the red Critical and amber High counts grey. */
+
+.daily-summary-table tbody tr.day-row {
+  cursor: pointer;
+}
+
+.daily-summary-table tbody tr.day-row:focus-visible {
+  outline: 2px solid var(--primary-500, #3b82f6);
+  outline-offset: -2px;
+}
+
+.day-date {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: 600;
+  color: var(--gray-900);
+  white-space: nowrap;
+}
+
+.day-chevron {
+  display: inline-block;
+  width: 14px;
+  color: var(--gray-400);
+  transition: transform 0.15s ease;
+}
+
+tr.day-row[aria-expanded="true"] .day-chevron {
+  transform: rotate(90deg);
+}
+
+.daily-summary-table td.day-count-total {
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.daily-summary-table td.day-zero {
+  color: var(--gray-300);
+}
+
+.daily-summary-table td.day-count-critical {
+  font-weight: 700;
+  color: var(--priority-critical);
+}
+
+.daily-summary-table td.day-count-high {
+  font-weight: 600;
+  /* Not --priority-high: that token is #eab308, a yellow that fails contrast
+     as text on white. The darker amber reads as the same colour family. */
+  color: var(--warning-600);
+}
+
+.daily-summary-table td.day-top-category {
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+
+.day-top-category small {
+  color: var(--gray-400);
+  font-size: var(--text-xs);
+}
+
+.daily-summary-table td.day-open-some {
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+/* Expanded detail: that day's individual reports */
+.daily-summary-table tr.day-detail > td {
+  padding: 0;
+  background: var(--gray-50);
+}
+
+.day-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-5) var(--sp-3) calc(var(--sp-5) + 22px);
+}
+
+.day-detail-item {
+  display: grid;
+  grid-template-columns: 72px 104px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 6px 0;
+  border-top: 1px solid var(--gray-200);
+  font-size: var(--text-xs);
+  color: var(--gray-600);
+}
+
+.day-detail-item:first-child {
+  border-top: none;
+}
+
+.day-detail-id {
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+.day-detail-text {
+  font-size: var(--text-sm);
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-detail-text small {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+}
+
+.daily-summary-table tfoot td {
+  font-weight: 700;
+  color: var(--gray-900);
+  background: var(--gray-50);
+  border-top: 2px solid var(--gray-200);
+}
+
+.daily-summary-empty {
+  padding: var(--sp-8, 2rem) var(--sp-5);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  border-top: 1px solid var(--gray-200);
+}
+
+.daily-summary-empty .btn {
+  margin-top: var(--sp-3);
+}
+
+@media (max-width: 640px) {
+  .daily-summary-controls {
+    width: 100%;
+  }
+  .daily-summary-field {
+    flex: 1;
+  }
+  .daily-summary-field .form-input {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {

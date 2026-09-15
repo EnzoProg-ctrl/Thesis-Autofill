@@ -14,7 +14,7 @@
   <title>Analytics — Nepo Mall Admin</title>
   <link rel="stylesheet" href="../css/design-system.css">
   <link rel="stylesheet" href="../css/components.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/admin.css?v=3">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -156,6 +156,48 @@
           </div>
         </div>
 
+        <!-- Summary per Date — requested at the final defense.
+             Has its own From/To range rather than following the Weekly /
+             Monthly toggle above: that toggle only ever shows the CURRENT week
+             or month, so any past date would be unreachable from here. -->
+        <section class="analytics-card daily-summary" id="dailySummary" aria-labelledby="dailySummaryTitle">
+          <div class="daily-summary-header">
+            <div>
+              <h4 id="dailySummaryTitle">Summary per Date</h4>
+              <p class="daily-summary-sub" id="dailySummaryRangeLabel">Reports submitted each day</p>
+            </div>
+            <div class="daily-summary-controls">
+              <label class="daily-summary-field">
+                <span>From</span>
+                <input type="date" class="form-input" id="dailyFrom">
+              </label>
+              <label class="daily-summary-field">
+                <span>To</span>
+                <input type="date" class="form-input" id="dailyTo">
+              </label>
+            </div>
+          </div>
+          <div class="daily-summary-table-wrap" id="dailySummaryTableWrap">
+            <table class="data-table daily-summary-table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col" class="num">Reports</th>
+                  <th scope="col" class="num">Critical</th>
+                  <th scope="col" class="num">High</th>
+                  <th scope="col" class="num">Medium</th>
+                  <th scope="col" class="num">Low</th>
+                  <th scope="col">Top category</th>
+                  <th scope="col" class="num">Still open</th>
+                </tr>
+              </thead>
+              <tbody id="dailySummaryBody"></tbody>
+              <tfoot id="dailySummaryFoot"></tfoot>
+            </table>
+          </div>
+          <div class="daily-summary-empty" id="dailySummaryEmpty" hidden></div>
+        </section>
+
         <!-- Charts Grid -->
         <div class="analytics-grid">
 
@@ -229,7 +271,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script type="module" src="../js/analytics.js?v=2"></script>
+  <script type="module" src="../js/analytics.js?v=3"></script>
 </body>
 
 </html>
