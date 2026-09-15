@@ -186,8 +186,8 @@ const CRITICAL_PANEL_LIMIT = 6;
    writes over ai_priority_level directly and moves the model's original
    answer to preOverridePriorityLevel, so this reads the reviewer-confirmed
    level when one exists, same as everywhere else in this file. Keeping the
-   filter identical to renderKPIs() is deliberate — the panel's row count and
-   the KPI card's number must never disagree on screen. */
+   filter identical to renderKPIs() is deliberate — the panel's count and the
+   KPI card's number must never disagree on screen. */
 function getCriticalHeadlines() {
   return issues
     .filter(i => i.aiPriorityLevel === 'critical' && i.status !== 'resolved')
@@ -197,18 +197,42 @@ function getCriticalHeadlines() {
     .sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
 }
 
+/* Compact elapsed time for the waiting column: "12m", "3h", "5d".
+   formatRelativeTime() switches to a calendar date after a week, which would
+   break the column's alignment exactly when a report is most overdue. */
+function formatWaiting(isoString) {
+  if (!isoString) return '—';
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(isoString)) / 60000));
+  if (mins < 60) return `${Math.max(mins, 1)}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
+
+function showAllCriticalInTable() {
+  // Routes through the existing priority filter and table view rather than
+  // building a second list for the reports past the cap.
+  filters.priority = 'critical';
+  const filterSelect = document.getElementById('filter-priority');
+  if (filterSelect) filterSelect.value = 'critical';
+  currentView = 'table';
+  document.querySelectorAll('#view-toggle .segmented-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === 'table'));
+  renderCurrentView();
+  document.getElementById('view-toggle')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderCriticalHeadlines() {
   const panel = document.getElementById('critical-panel');
   const list = document.getElementById('critical-panel-list');
   const countEl = document.getElementById('critical-panel-count');
+  const viewAllBtn = document.getElementById('critical-panel-view-all');
   if (!panel || !list || !countEl) return;
 
   const criticals = getCriticalHeadlines();
 
-  // Hidden rather than an empty state: on a day with no open Critical
-  // reports there is nothing here worth an admin's attention, and a panel
-  // that is sometimes empty and sometimes not reads as more alarming, not
-  // less, when it does appear.
+  // Hidden rather than an empty state: with no open Critical reports there is
+  // nothing here worth an admin's attention.
   if (criticals.length === 0) {
     panel.hidden = true;
     list.innerHTML = '';
@@ -221,41 +245,49 @@ function renderCriticalHeadlines() {
   const shown = criticals.slice(0, CRITICAL_PANEL_LIMIT);
   const remaining = criticals.length - shown.length;
 
-  list.innerHTML = shown.map(issue => `
-    <div class="critical-row" data-issue-id="${escapeHtml(issue.id)}">
-      <span class="critical-row-id">${escapeHtml(issue.ticketNumber || issue.id.slice(0, 8))}</span>
-      <span class="critical-row-text">${escapeHtml(issue.text)}</span>
-      <span class="critical-row-meta">
-        <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span>
-        <span>${escapeHtml(issue.storeName || 'Unknown')}</span>
-        <span class="critical-row-waiting">waiting ${formatRelativeTime(issue.submittedAt).replace(' ago', '')}</span>
-      </span>
-    </div>
-  `).join('') + (remaining > 0
-    ? `<button type="button" class="critical-panel-more" id="critical-panel-more">+${remaining} more critical report${remaining === 1 ? '' : 's'} — view all</button>`
-    : '');
+  if (viewAllBtn) {
+    viewAllBtn.textContent = remaining > 0 ? `View all ${criticals.length}` : 'View all';
+    // Assigned rather than addEventListener: this function runs on every
+    // refresh, and listeners would otherwise stack.
+    viewAllBtn.onclick = showAllCriticalInTable;
+  }
 
-  // Reuses the existing detail slide-over rather than a second view — a
-  // headline here should open exactly what clicking the same report in the
-  // kanban or table would.
+  list.innerHTML = shown.map(issue => {
+    const status = getStatusInfo(issue.status);
+    const statusClass = issue.status === 'in_progress' ? 'badge-info' : 'badge-warning';
+    const waited = formatWaiting(issue.submittedAt);
+    return `
+      <div class="critical-row" role="button" tabindex="0" data-issue-id="${escapeHtml(issue.id)}"
+           title="Submitted ${escapeHtml(formatRelativeTime(issue.submittedAt))}">
+        <span class="critical-row-id">${escapeHtml(issue.ticketNumber || issue.id.slice(0, 8))}</span>
+        <div class="critical-row-main">
+          <div class="critical-row-text">${escapeHtml(issue.text)}</div>
+          <div class="critical-row-meta">
+            <span>${escapeHtml(issue.storeName || 'Unknown store')}</span>
+            <span class="critical-row-sep">·</span>
+            ${getCategoryIcon(issue.aiCategory)}
+            <span>${escapeHtml(getCategoryLabel(issue.aiCategory))}</span>
+          </div>
+        </div>
+        <span class="badge ${statusClass} critical-row-status">${escapeHtml(status.label)}</span>
+        <div class="critical-row-waiting">
+          <strong>${escapeHtml(waited)}</strong>
+          <span>waiting</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Rows are rebuilt on every render, so these listeners do not accumulate.
+  // They open the same detail slide-over as the kanban and table views.
   list.querySelectorAll('.critical-row').forEach(row => {
     row.addEventListener('click', () => openIssueDetail(row.dataset.issueId));
-  });
-
-  const moreBtn = document.getElementById('critical-panel-more');
-  if (moreBtn) {
-    moreBtn.addEventListener('click', () => {
-      // Routes through the existing priority filter + table view rather than
-      // building a second "see all" list for the reports past the cap.
-      filters.priority = 'critical';
-      const filterSelect = document.getElementById('filter-priority');
-      if (filterSelect) filterSelect.value = 'critical';
-      currentView = 'table';
-      document.querySelectorAll('#view-toggle .segmented-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.view === 'table'));
-      renderCurrentView();
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openIssueDetail(row.dataset.issueId);
+      }
     });
-  }
+  });
 }
 
 /* ==========================================================
