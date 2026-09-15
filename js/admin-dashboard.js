@@ -66,6 +66,7 @@ async function initDashboard() {
   renderKPIs();
   renderCurrentView();
   updateHITLBadge();
+  renderCriticalHeadlines();
   bindEvents();
   startAutoRefresh();
   personalizeTopbar();
@@ -171,6 +172,89 @@ function setTrend(id, value, label, isUpBad) {
   } else {
     el.textContent = `0 ${label}`;
     el.className = 'kpi-trend';
+  }
+}
+
+/* ==========================================================
+   Critical Reports Panel
+   ========================================================== */
+
+const CRITICAL_PANEL_LIMIT = 6;
+
+/* Same definition of "needs attention" as the KPI card above — unresolved
+   and currently Critical. aiPriorityLevel is the CURRENT value: an override
+   writes over ai_priority_level directly and moves the model's original
+   answer to preOverridePriorityLevel, so this reads the reviewer-confirmed
+   level when one exists, same as everywhere else in this file. Keeping the
+   filter identical to renderKPIs() is deliberate — the panel's row count and
+   the KPI card's number must never disagree on screen. */
+function getCriticalHeadlines() {
+  return issues
+    .filter(i => i.aiPriorityLevel === 'critical' && i.status !== 'resolved')
+    // Oldest first. A Critical report that has sat for two days is a bigger
+    // problem than one that arrived five minutes ago, so how long it has
+    // been waiting decides what surfaces first, not how recently it came in.
+    .sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+}
+
+function renderCriticalHeadlines() {
+  const panel = document.getElementById('critical-panel');
+  const list = document.getElementById('critical-panel-list');
+  const countEl = document.getElementById('critical-panel-count');
+  if (!panel || !list || !countEl) return;
+
+  const criticals = getCriticalHeadlines();
+
+  // Hidden rather than an empty state: on a day with no open Critical
+  // reports there is nothing here worth an admin's attention, and a panel
+  // that is sometimes empty and sometimes not reads as more alarming, not
+  // less, when it does appear.
+  if (criticals.length === 0) {
+    panel.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+
+  panel.hidden = false;
+  countEl.textContent = criticals.length;
+
+  const shown = criticals.slice(0, CRITICAL_PANEL_LIMIT);
+  const remaining = criticals.length - shown.length;
+
+  list.innerHTML = shown.map(issue => `
+    <div class="critical-row" data-issue-id="${escapeHtml(issue.id)}">
+      <span class="critical-row-id">${escapeHtml(issue.ticketNumber || issue.id.slice(0, 8))}</span>
+      <span class="critical-row-text">${escapeHtml(issue.text)}</span>
+      <span class="critical-row-meta">
+        <span class="badge badge-gray">${getCategoryIcon(issue.aiCategory)} ${escapeHtml(getCategoryLabel(issue.aiCategory))}</span>
+        <span>${escapeHtml(issue.storeName || 'Unknown')}</span>
+        <span class="critical-row-waiting">waiting ${formatRelativeTime(issue.submittedAt).replace(' ago', '')}</span>
+      </span>
+    </div>
+  `).join('') + (remaining > 0
+    ? `<button type="button" class="critical-panel-more" id="critical-panel-more">+${remaining} more critical report${remaining === 1 ? '' : 's'} — view all</button>`
+    : '');
+
+  // Reuses the existing detail slide-over rather than a second view — a
+  // headline here should open exactly what clicking the same report in the
+  // kanban or table would.
+  list.querySelectorAll('.critical-row').forEach(row => {
+    row.addEventListener('click', () => openIssueDetail(row.dataset.issueId));
+  });
+
+  const moreBtn = document.getElementById('critical-panel-more');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => {
+      // Routes through the existing priority filter + table view rather than
+      // building a second "see all" list for the reports past the cap.
+      filters.priority = 'critical';
+      const filterSelect = document.getElementById('filter-priority');
+      if (filterSelect) filterSelect.value = 'critical';
+      currentView = 'table';
+      document.querySelectorAll('#view-toggle .segmented-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.view === 'table'));
+      renderCurrentView();
+    });
   }
 }
 
@@ -418,6 +502,7 @@ async function handleDrop(e) {
   renderKanban();
   renderKPIs();
   updateHITLBadge();
+  renderCriticalHeadlines();
   showToast(`${issue.ticketNumber || issueId} moved to ${getStatusInfo(newStatus).label}`, 'success');
 }
 
@@ -683,6 +768,7 @@ function openIssueDetail(issueId) {
       renderKPIs();
       renderCurrentView();
       updateHITLBadge();
+      renderCriticalHeadlines();
       showToast(`${issue.ticketNumber || issue.id} updated successfully`, 'success');
     });
   }
@@ -781,6 +867,7 @@ function startAutoRefresh() {
     renderKPIs();
     renderCurrentView();
     updateHITLBadge();
+    renderCriticalHeadlines();
   }, 30000);
 }
 

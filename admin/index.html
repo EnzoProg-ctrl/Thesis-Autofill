@@ -157,6 +157,23 @@
           </div>
         </div>
 
+        <!-- Critical Reports — hidden entirely when empty, rather than shown
+             as an empty state, so a clear day doesn't add a panel to scan
+             past. renderCriticalHeadlines() in admin-dashboard.js toggles the
+             [hidden] attribute alongside every renderKPIs() call, so it stays
+             in sync with the same events: load, refresh, status change,
+             override. -->
+        <div class="critical-panel" id="critical-panel" hidden>
+          <div class="critical-panel-header">
+            <h2 class="critical-panel-title">
+              <span class="priority-dot critical"></span>
+              Critical — Needs Attention
+            </h2>
+            <span class="badge badge-danger" id="critical-panel-count">0</span>
+          </div>
+          <div class="critical-panel-list" id="critical-panel-list"></div>
+        </div>
+
         <!-- View Controls -->
         <div class="view-controls">
           <div class="segmented-control" id="view-toggle">
