@@ -1,0 +1,41 @@
+# ============================================================
+#  Publish the web front end to Docker Hub
+#
+#  Builds deploy/web/Dockerfile (nginx serving the static site) and pushes it
+#  as firs-web, the image docker-compose.yml runs next to the classifier.
+#
+#  Manual only (Actions tab > "Publish web container" > Run workflow).
+#  Uses the same DOCKERHUB_USERNAME variable and DOCKERHUB_TOKEN secret as
+#  docker-publish.yml.
+# ============================================================
+name: Publish web container
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to publish alongside "latest"
+        required: true
+        default: "1.0"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/web/Dockerfile
+          push: true
+          tags: |
+            ${{ vars.DOCKERHUB_USERNAME }}/firs-web:latest
+            ${{ vars.DOCKERHUB_USERNAME }}/firs-web:${{ inputs.tag }}

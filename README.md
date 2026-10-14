@@ -111,6 +111,7 @@ last active danger term.
 | `supabase/` | Schema, RLS policies, functions, migrations |
 | `serving/` | FastAPI inference service and model loader |
 | `deploy/hf-space/` | Dockerfile for the hosted inference container |
+| `deploy/web/` | Dockerfile for the web application container |
 
 Key modules:
 
@@ -160,6 +161,28 @@ python -m http.server 5500
 
 Open `http://localhost:5500`. It must be `http://`, not `file://` — opening the pages
 directly from disk fails CORS and silently falls back to the keyword scorer.
+
+---
+
+## Running with Docker
+
+The web application and the classifier are both published on Docker Hub. With Docker
+installed, from the repository root:
+
+```bash
+docker compose up
+```
+
+Open `http://localhost:5500` once the classifier has loaded its model (about 40 seconds).
+
+| Image | Contents |
+|---|---|
+| `dexterctoribio/firs-web` | The web application, served by nginx (`deploy/web/`) |
+| `dexterctoribio/firs-classifier` | The classification service with the fine-tuned model (`deploy/hf-space/`) |
+
+The database and logins remain on the hosted Supabase project, so an internet connection
+is still required, and reports submitted from a local copy are saved to the same
+database as the deployed system.
 
 ---
 

@@ -1,0 +1,35 @@
+# ============================================================
+#  Nepo Mall FIRS — run the web application and the classifier locally
+#
+#      docker compose up
+#
+#  Then open http://localhost:5500 (the classifier takes about 40 seconds to
+#  load the model after starting).
+#
+#  The database and logins stay on the hosted Supabase project, so an internet
+#  connection is still required, and anything submitted here is saved to the
+#  same database as the deployed system. Only the website and the classifier
+#  run on this computer.
+#
+#  Port 5500 is deliberate: the classifier only accepts browser requests from
+#  the origins listed in serving/serve.py, and http://localhost:5500 is one.
+#
+#  To build the web image from source instead of pulling it:
+#      docker build -f deploy/web/Dockerfile -t dexterctoribio/firs-web:1.0 .
+# ============================================================
+services:
+  classifier:
+    image: dexterctoribio/firs-classifier:1.0
+    ports:
+      - "7860:7860"
+
+  web:
+    image: dexterctoribio/firs-web:1.0
+    ports:
+      - "5500:80"
+    environment:
+      # The browser, not the web container, calls the classifier, so this is
+      # the classifier's address as seen from the browser.
+      FIRS_API_BASE: http://localhost:7860
+    depends_on:
+      - classifier

@@ -11,6 +11,8 @@
 serving/
 supabase/
 deploy/
+.github/
+docker-compose.yml
 .vscode/
 .cursorrules
 .gitignore
