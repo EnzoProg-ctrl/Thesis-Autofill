@@ -1,0 +1,66 @@
+# ============================================================
+#  Publish the classification service to Docker Hub
+#
+#  Builds the same container the Hugging Face Space runs, from
+#  deploy/hf-space/Dockerfile, and pushes it to Docker Hub so it can be
+#  downloaded with `docker pull` without a Hugging Face login. The Space's
+#  own image registry refuses anonymous pulls, which is why this exists.
+#
+#  Manual only (Actions tab > "Publish container" > Run workflow). The image
+#  contains the trained model weights, so publishing it is a deliberate act,
+#  never a side effect of an ordinary push.
+#
+#  REQUIRED REPOSITORY SETTINGS
+#  ----------------------------
+#    Settings > Secrets and variables > Actions
+#      Variables:
+#        DOCKERHUB_USERNAME  the Docker Hub account name
+#      Secrets:
+#        DOCKERHUB_TOKEN     a Docker Hub personal access token, Read & Write
+#        HF_TOKEN            a Hugging Face READ token. Set it even if the
+#                            model repo is made public: the Dockerfile always
+#                            passes a token to the download, so the build
+#                            should not depend on how an empty one is handled.
+# ============================================================
+name: Publish container
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to publish alongside "latest"
+        required: true
+        default: "1.0"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image is about 3 GB (CPU PyTorch plus the 1.15 GB checkpoint).
+      # Clear large preinstalled toolchains this job never uses, so the build
+      # does not run out of disk on the runner.
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # The Dockerfile COPYs serve.py, checkpoint.py and roberta_model.py from
+      # the context root, which is where they sit in serving/. The checkpoint
+      # itself is not in git; the build downloads it from MODEL_REPO.
+      - uses: docker/build-push-action@v6
+        with:
+          context: serving
+          file: deploy/hf-space/Dockerfile
+          build-args: MODEL_REPO=Chompyy/firs-model
+          secrets: HF_TOKEN=${{ secrets.HF_TOKEN }}
+          push: true
+          tags: |
+            ${{ vars.DOCKERHUB_USERNAME }}/firs-classifier:latest
+            ${{ vars.DOCKERHUB_USERNAME }}/firs-classifier:${{ inputs.tag }}
