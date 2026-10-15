@@ -390,6 +390,7 @@ Every signed-in user can edit their own profile, but nobody can change their own
 | `serving/` | FastAPI inference service and model loader |
 | `deploy/hf-space/` | Dockerfile for the classifier container |
 | `deploy/web/` | Dockerfile for the web application container |
+| `deploy/dockerhub/` | Overview pages for the two Docker Hub images |
 | `docker-compose.yml`, `.env.example` | Running both containers together |
 | `SETUP.md` | Step-by-step guide to setting up your own copy |
 
