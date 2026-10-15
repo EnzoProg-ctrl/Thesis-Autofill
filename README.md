@@ -73,7 +73,10 @@ The error *direction* matters more here than the accuracy gap. The baseline show
 directional preference and mis-routed 34 genuine emergencies as low priority. The
 fine-tuned model errs toward greater severity and mis-routed none.
 
-Training and evaluation code lives in a separate repository.
+The trained checkpoint is published as the
+[`model-v1` release](https://github.com/EnzoProg-ctrl/Thesis-Autofill/releases/tag/model-v1)
+of this repository. The training pipeline and corpus are maintained separately and are
+not included here.
 
 ---
 
@@ -124,9 +127,18 @@ Key modules:
 
 ---
 
-## Running it locally
+## Setting up your own copy
 
-**1. Database.** Create a Supabase project and apply, in order:
+These steps build a complete, independent copy of the system with its own database.
+To try the existing system without setting anything up, see
+[Running with Docker](#running-with-docker) instead.
+
+**Prerequisites:** a free [Supabase](https://supabase.com) account, Python 3.11, Git,
+and about 4 GB of free RAM for the classifier. No GPU is needed.
+
+### 1. Database
+
+Create a Supabase project. In its **SQL Editor**, run each of these files, in this order:
 
 ```
 supabase/schema.sql
@@ -141,26 +153,105 @@ supabase/migration_007_tenant_signup_trigger.sql
 supabase/migration_008_safety_terms.sql
 ```
 
-Then enable **Authentication → Sign In / Providers → Email → Confirm email**, and set
-**URL Configuration → Site URL** to wherever you serve the app.
+Then, under **Authentication**:
 
-**2. Inference service.**
+- **Sign In / Providers → Email:** enable **Confirm email**.
+- **URL Configuration:** set **Site URL** to the address the website will be served
+  from, and add `<that address>/reset-password.html` to **Redirect URLs**, or password
+  reset links will be refused.
+
+Supabase's built-in email sender allows only a few messages per hour. For real use,
+configure your own SMTP server under **Authentication → Emails**.
+
+### 2. First administrator
+
+Tenants register themselves, but administrator and staff accounts can only be created
+by an existing administrator, so the first one is created by hand:
+
+1. **Authentication → Users → Add user**, with an email and password, and
+   **Auto Confirm User** ticked.
+2. In the **SQL Editor**, give that account the administrator role:
+
+   ```sql
+   insert into public.profiles (id, full_name, email, role, avatar_initials)
+   select id, 'System Admin', email, 'admin', 'SA'
+   from auth.users
+   where email = 'admin@example.com';   -- the email from step 1
+   ```
+
+Further administrators and maintenance staff are then created from **Manage Users**
+in the admin dashboard.
+
+### 3. Connect the code to your database
+
+In Supabase, open **Project Settings → API** and copy the **Project URL** and the
+**anon public** key.
+
+- **Website:** replace `SUPABASE_URL` and `SUPABASE_ANON` in `js/supabase-client.js`.
+- **Classifier:** set the environment variables `FIRS_SUPABASE_URL` and
+  `FIRS_SUPABASE_ANON_KEY` when starting it (step 4). Without them it reads the
+  safety-term list from the original project's database.
+
+The anon key is meant to be public; the row-level security policies applied in step 1
+are what protect the data. Never put the **service_role** key in either place.
+
+### 4. Classifier
 
 ```bash
-cd serving && python get_model.py && pip install -r requirements.txt && python serve.py
+cd serving
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+python get_model.py
+python serve.py
 ```
 
-`get_model.py` fetches the checkpoint, which is too large for git and ships as a
-release asset instead.
+`get_model.py` downloads the trained checkpoint (about 1.1 GB) from this repository's
+[`model-v1` release](https://github.com/EnzoProg-ctrl/Thesis-Autofill/releases/tag/model-v1)
+and verifies its checksum. The service starts on `http://127.0.0.1:8000`; check it with
+`http://127.0.0.1:8000/health`. See [`serving/README.md`](serving/README.md) for details.
 
-**3. Web app.** Serve the repository root over HTTP:
+### 5. Website
+
+Serve the repository root over HTTP:
 
 ```bash
 python -m http.server 5500
 ```
 
+Then point the tenant pages at your classifier. `tenant/index.html` and
+`tenant/home.html` each contain this line, set to the original deployment:
+
+```html
+<script>window.FIRS_API_BASE = 'https://chompyy-firs-classifier.hf.space';</script>
+```
+
+Change it in both files to your classifier's address, for example
+`http://127.0.0.1:8000`.
+
 Open `http://localhost:5500`. It must be `http://`, not `file://` — opening the pages
 directly from disk fails CORS and silently falls back to the keyword scorer.
+
+The classifier only accepts browser requests from the addresses listed in
+`allow_origins` in `serving/serve.py`. `http://localhost:5500` is already there; add
+your own website's address when you deploy it.
+
+### 6. Putting it online
+
+- **Website:** import the repository into [Vercel](https://vercel.com) as a static site,
+  with no framework and no build command. `.vercelignore` keeps the server code and
+  database files off the public site.
+- **Classifier:** deploy to a Hugging Face Space with the Docker SDK by following
+  [`deploy/hf-space/README.md`](deploy/hf-space/README.md), or run the container
+  image on any host with about 4 GB of memory.
+- Update `window.FIRS_API_BASE` (step 5), `allow_origins` (step 5) and the Supabase
+  **Site URL** and **Redirect URLs** (step 1) to the deployed addresses.
+
+### Checking that the model is used
+
+After submitting a report, open it in **HITL Review**. A report the model classified
+reads "Priority assessed as … by the model". A yellow note saying "The model did not
+run on this report" means the website could not reach the classifier and the keyword
+fallback was used instead.
 
 ---
 
@@ -183,6 +274,17 @@ Open `http://localhost:5500` once the classifier has loaded its model (about 40 
 The database and logins remain on the hosted Supabase project, so an internet connection
 is still required, and reports submitted from a local copy are saved to the same
 database as the deployed system.
+
+The published images are configured for the original project's database. To run them
+against your own (see [Setting up your own copy](#setting-up-your-own-copy)), rebuild
+the web image after editing `js/supabase-client.js`:
+
+```bash
+docker build -f deploy/web/Dockerfile -t yourname/firs-web .
+```
+
+and pass your project to the classifier with `-e FIRS_SUPABASE_URL=...` and
+`-e FIRS_SUPABASE_ANON_KEY=...`, or under `environment:` in `docker-compose.yml`.
 
 ---
 

@@ -69,16 +69,14 @@ def _progress(done: int, total: int) -> None:
 
 
 def _asset_url() -> tuple[str, dict]:
-    """Resolve the download URL, authenticating if this is a private repo.
+    """Resolve the download URL.
 
-    Thesis-Autofill is PRIVATE, so the public browser_download_url returns 404
-    to anyone unauthenticated — including teammates who can see the release
-    perfectly well in their browser. For private repos the asset must be
+    The repository is public, so the plain release URL works without any
+    authentication. The token path is kept for forks that keep their copy
+    private: there the public URL returns 404, and the asset must instead be
     fetched through the API by its numeric id, with a token and an
-    octet-stream Accept header.
-
-    Set GITHUB_TOKEN to a classic token with `repo` scope, or a fine-grained
-    token with read access to this repository:
+    octet-stream Accept header. Set GITHUB_TOKEN to a classic token with
+    `repo` scope, or a fine-grained token with read access to the repository:
         https://github.com/settings/tokens
     """
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -122,17 +120,11 @@ def download() -> None:
         ARCHIVE.unlink(missing_ok=True)
         sys.exit(
             f"\nDownload failed: {exc}\n\n"
-            f"This repository is PRIVATE, so the download needs authentication.\n"
-            f"Two options:\n\n"
-            f"  A) Set a token and re-run:\n"
-            f"       GITHUB_TOKEN=ghp_xxx python serving/get_model.py\n"
-            f"     Create one at https://github.com/settings/tokens with `repo`\n"
-            f"     scope (classic) or read access to this repo (fine-grained).\n\n"
-            f"  B) Download it in your browser — you are already signed in:\n"
+            f"Download it in your browser instead:\n"
             f"       https://github.com/{OWNER}/{REPO}/releases/tag/{RELEASE_TAG}\n"
-            f"     Save it as:\n       {ARCHIVE}\n"
-            f"     then re-run this script. It will verify and extract the\n"
-            f"     local file without downloading anything."
+            f"Save it as:\n       {ARCHIVE}\n"
+            f"then re-run this script. It will verify and extract the local\n"
+            f"file without downloading anything."
         )
 
 
