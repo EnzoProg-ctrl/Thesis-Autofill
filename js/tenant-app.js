@@ -377,12 +377,12 @@ reportForm.addEventListener('submit', async (e) => {
 
     // Determine estimated response time
     const responseTimeMap = {
-      critical: '30 minutes – 1 hour',
-      high: '1 – 4 hours',
-      medium: '4 – 24 hours',
-      low: '1 – 3 business days',
+      critical: '5 – 15 minutes',
+      high: '20 – 30 minutes',
+      medium: '30 minutes – 1 hour',
+      low: '1 – 2 hours',
     };
-    const estimatedResponse = responseTimeMap[aiResult.priorityLevel] || '4 – 24 hours';
+    const estimatedResponse = responseTimeMap[aiResult.priorityLevel] || '30 minutes – 1 hour';
 
     // Priority badge class
     const priorityBadgeClass = `priority-badge ${aiResult.priorityLevel}`;

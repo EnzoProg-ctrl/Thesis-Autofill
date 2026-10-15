@@ -19,11 +19,13 @@
 # ============================================================
 services:
   classifier:
+    container_name: firs-classifier
     image: dexterctoribio/firs-classifier:1.0
     ports:
       - "7860:7860"
 
   web:
+    container_name: firs-web
     image: dexterctoribio/firs-web:1.0
     ports:
       - "5500:80"
