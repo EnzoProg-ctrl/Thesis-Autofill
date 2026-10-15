@@ -1,0 +1,42 @@
+# ============================================================
+#  Update the Docker Hub pages
+#
+#  Sets the short description and the overview of both Docker Hub
+#  repositories from this repository: the overviews are the files in
+#  deploy/dockerhub/. Edit those files, push, then run this workflow
+#  (Actions tab > "Update Docker Hub pages" > Run workflow) instead of
+#  pasting text into Docker Hub by hand.
+#
+#  Uses the same DOCKERHUB_USERNAME variable and DOCKERHUB_TOKEN secret as
+#  docker-publish.yml. Docker Hub only lets a personal access token change
+#  descriptions if it has the "Read, Write, Delete" permission; with a
+#  "Read & Write" token this workflow fails with a 403 and changes nothing.
+# ============================================================
+name: Update Docker Hub pages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  describe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: firs-web
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/firs-web
+          short-description: "Web app of the Nepo Mall Facility Issue Reporting System (FIRS). Demo accounts inside."
+          readme-filepath: deploy/dockerhub/firs-web.md
+
+      - name: firs-classifier
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/firs-classifier
+          short-description: "XLM-RoBERTa classifier for Taglish facility issue reports (category + priority), Nepo Mall FIRS"
+          readme-filepath: deploy/dockerhub/firs-classifier.md
