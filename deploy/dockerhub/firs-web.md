@@ -11,14 +11,25 @@ This image serves the website with nginx. The AI classifier is a separate image:
 
 ## Quick start: the whole system, no setup
 
-Download the Compose file, which starts the website and the classifier together:
-https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml
+The Compose file starts the website and the classifier together. Make a new folder, open a terminal in it, then download the file and start the system:
 
-From the folder containing it:
+**Windows (PowerShell):**
 
 ```
+curl.exe -o docker-compose.yml https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml
 docker compose up
 ```
+
+**Mac or Linux:**
+
+```
+curl -o docker-compose.yml https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml
+docker compose up
+```
+
+Or download it in a browser: open
+https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml,
+right-click the page, choose **Save as**, and save it as `docker-compose.yml` (on Windows, set *Save as type* to *All files*, so it is not saved as `.txt`). Then run `docker compose up` in that folder.
 
 The first run downloads about 1.5 GB. When the terminal shows `Uvicorn running on http://0.0.0.0:7860` (about 40 seconds, while the AI model loads), open **http://localhost:5500**.
 

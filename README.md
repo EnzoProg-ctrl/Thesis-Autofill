@@ -197,8 +197,23 @@ The web application and the classifier are both published on Docker Hub:
 **Quickest way: no setup, uses the demo database and the [demo accounts](#demo-accounts).**
 
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and open it.
-2. Download [`docker-compose.yml`](docker-compose.yml) (or this whole repository), open a
-   terminal in the folder containing it, and run:
+2. Make a new folder, open a terminal in it (on Windows: right-click inside the folder →
+   **Open in Terminal**), and download the Compose file:
+   - **Windows (PowerShell):**
+     ```powershell
+     curl.exe -o docker-compose.yml https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml
+     ```
+   - **Mac or Linux:**
+     ```bash
+     curl -o docker-compose.yml https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml
+     ```
+
+   Or open [that link](https://raw.githubusercontent.com/EnzoProg-ctrl/Thesis-Autofill/main/docker-compose.yml)
+   in a browser, right-click → **Save as**, and save it as `docker-compose.yml` (on
+   Windows, set *Save as type* to *All files*). If you downloaded this whole repository,
+   the file is already in its folder.
+
+   Then start the system:
    ```bash
    docker compose up
    ```
