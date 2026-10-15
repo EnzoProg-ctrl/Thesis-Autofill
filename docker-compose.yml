@@ -21,6 +21,12 @@
 #  To build the web image from source instead of pulling it:
 #      docker build -f deploy/web/Dockerfile -t dexterctoribio/firs-web:1.0 .
 # ============================================================
+
+# Fixed project name, so the containers are named the same whatever folder this
+# file is run from (Compose otherwise uses the folder name, and a drive root
+# such as M:\ has none).
+name: firs
+
 services:
   classifier:
     container_name: firs-classifier
