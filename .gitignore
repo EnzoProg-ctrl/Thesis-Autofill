@@ -22,6 +22,8 @@ js/mcp_config.json
 **/mcp_config.json
 .env
 .env.*
+# The template is safe to commit: it holds placeholders, not credentials.
+!.env.example
 
 # Python
 __pycache__/

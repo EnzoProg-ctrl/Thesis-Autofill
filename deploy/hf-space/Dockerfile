@@ -4,20 +4,14 @@
 #  Serves serving/serve.py (XLM-RoBERTa-large) over HTTPS so the Vercel front
 #  end can reach it. HF Spaces expect the app on port 7860.
 #
-#  The 1.15 GB checkpoint is NOT baked into this image — it is pulled from a
-#  PRIVATE Hugging Face model repo at build time. That keeps the Space repo
-#  small and lets the model be replaced without touching this file.
+#  The 1.15 GB checkpoint is not in the Space repo. It is downloaded at build
+#  time by get_model.py from the public `model-v1` release of the GitHub
+#  repository, and its SHA-256 checksum is verified before it is unpacked.
+#  No account, token or Space secret is needed, so any Hugging Face account
+#  (or any Docker host) can build this image.
 #
-#  REQUIRED SPACE SETTINGS
-#  -----------------------
-#    Settings > Variables and secrets:
-#      MODEL_REPO  (variable)  e.g. Chompyy/firs-model
-#      HF_TOKEN    (secret)    a READ token from
-#                              huggingface.co/settings/tokens
-#
-#  HF_TOKEN must be a SECRET, not a variable — secrets are mounted at build
-#  time and are not baked into the image layers, so the token does not travel
-#  with the built image.
+#  Upload to the Space: this Dockerfile, README.md, and serve.py,
+#  checkpoint.py, roberta_model.py and get_model.py from serving/.
 # ============================================================
 FROM python:3.11-slim
 
@@ -28,24 +22,17 @@ RUN pip install --no-cache-dir \
 
 RUN pip install --no-cache-dir \
       "fastapi>=0.110" "uvicorn>=0.27" "pydantic>=2.0" \
-      "transformers>=4.40" "huggingface_hub>=0.23"
+      "transformers>=4.40"
 
 WORKDIR /app
 
 # Service code only — no model weights.
-COPY serve.py checkpoint.py roberta_model.py ./
+COPY serve.py checkpoint.py roberta_model.py get_model.py ./
 
-ARG MODEL_REPO
-ENV MODEL_REPO=${MODEL_REPO}
-
-# Pull the checkpoint into /app/model. The token is mounted only for this
-# instruction, so it never becomes part of a stored image layer.
-RUN --mount=type=secret,id=HF_TOKEN,mode=0444 \
-    HF_TOKEN="$(cat /run/secrets/HF_TOKEN)" python -c "\
-import os; from huggingface_hub import snapshot_download; \
-snapshot_download(repo_id=os.environ['MODEL_REPO'], \
-                  local_dir='/app/model', \
-                  token=os.environ['HF_TOKEN'])"
+# Download, verify and unpack the checkpoint into /app/model. get_model.py
+# deletes the zip after unpacking, within this same layer, so the image holds
+# the model once rather than twice.
+RUN python get_model.py
 
 # Fail the build loudly if the download did not produce a usable checkpoint,
 # rather than starting a service that 500s on every request.

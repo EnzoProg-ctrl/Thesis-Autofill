@@ -21,14 +21,24 @@ level for unstructured Taglish maintenance reports.
 
 ## Setup
 
-1. Create a **model repo** on Hugging Face and upload the contents of
-   `serving/model/` (backbone/, head.pt, priority_head.pt, issue_head.pt,
-   tokenizer.json, meta.json, label_map.json, priority_map.json).
-2. Create this Space with **SDK: Docker**.
-3. In Space **Settings → Variables**, add build argument `MODEL_REPO`
-   set to your model repo id, e.g. `your-username/firs-xlmr-large`.
-4. Push `Dockerfile`, `README.md`, and the three Python files from
-   `serving/` (`serve.py`, `checkpoint.py`, `roberta_model.py`).
+Any free Hugging Face account can host this. No model repo, token or secret
+is needed: the build downloads the trained model from the public
+[`model-v1` release](https://github.com/EnzoProg-ctrl/Thesis-Autofill/releases/tag/model-v1)
+and verifies its checksum.
+
+1. On Hugging Face, **New Space**: any name, **SDK: Docker**, **Blank**
+   template, hardware **CPU basic** (free).
+2. In the Space's **Files** tab, upload this `Dockerfile` and `README.md`,
+   and these four files from `serving/`: `serve.py`, `checkpoint.py`,
+   `roberta_model.py` and `get_model.py`.
+3. Optional: under **Settings → Variables and secrets**, add the variables
+   `FIRS_SUPABASE_URL` and `FIRS_SUPABASE_ANON_KEY` to read the safety terms
+   from your own Supabase project instead of the original one.
+4. Wait for the build (about 5–10 minutes) until the Space shows **Running**,
+   then open `https://<username>-<space-name>.hf.space/health`.
+5. Point the website at it (`window.FIRS_API_BASE` in `tenant/index.html` and
+   `tenant/home.html`), and if the website is not on one of the addresses in
+   `allow_origins` in `serve.py`, add it there before uploading.
 
 ## Note on sleeping
 

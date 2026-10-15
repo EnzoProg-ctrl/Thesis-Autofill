@@ -17,10 +17,9 @@
 #        DOCKERHUB_USERNAME  the Docker Hub account name
 #      Secrets:
 #        DOCKERHUB_TOKEN     a Docker Hub personal access token, Read & Write
-#        HF_TOKEN            a Hugging Face READ token. Set it even if the
-#                            model repo is made public: the Dockerfile always
-#                            passes a token to the download, so the build
-#                            should not depend on how an empty one is handled.
+#
+#  The model is downloaded during the build from the public GitHub release
+#  (serving/get_model.py), so no Hugging Face token is needed.
 # ============================================================
 name: Publish container
 
@@ -51,15 +50,14 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # The Dockerfile COPYs serve.py, checkpoint.py and roberta_model.py from
-      # the context root, which is where they sit in serving/. The checkpoint
-      # itself is not in git; the build downloads it from MODEL_REPO.
+      # The Dockerfile COPYs serve.py, checkpoint.py, roberta_model.py and
+      # get_model.py from the context root, which is where they sit in
+      # serving/. The checkpoint itself is not in git; get_model.py downloads
+      # and verifies it during the build.
       - uses: docker/build-push-action@v6
         with:
           context: serving
           file: deploy/hf-space/Dockerfile
-          build-args: MODEL_REPO=Chompyy/firs-model
-          secrets: HF_TOKEN=${{ secrets.HF_TOKEN }}
           push: true
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/firs-classifier:latest

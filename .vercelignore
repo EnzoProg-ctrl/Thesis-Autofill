@@ -13,6 +13,8 @@ supabase/
 deploy/
 .github/
 docker-compose.yml
+.env.example
+SETUP.md
 .vscode/
 .cursorrules
 .gitignore
